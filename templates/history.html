@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}History{% endblock %}
+
+{% block content %}
+<h4 class="mb-4">Check-In History</h4>
+
+{% if rows %}
+<div class="card border-0">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-dark table-hover table-sm mb-0">
+        <thead>
+          <tr>
+            <th class="ps-3">Date</th>
+            <th>Core</th>
+            <th class="d-none d-sm-table-cell">Diet</th>
+            <th class="d-none d-sm-table-cell">WO1</th>
+            <th class="d-none d-sm-table-cell">WO2+Out</th>
+            <th class="d-none d-sm-table-cell">Water</th>
+            <th class="d-none d-sm-table-cell">Read</th>
+            <th class="d-none d-sm-table-cell">Photo</th>
+            <th class="d-none d-md-table-cell">Steps</th>
+            <th class="d-none d-md-table-cell">Pushups</th>
+            <th class="d-none d-md-table-cell">Study h</th>
+            <th class="d-none d-lg-table-cell">Paath</th>
+            <th class="d-none d-lg-table-cell">Skin</th>
+            <th class="d-none d-lg-table-cell">Hair</th>
+            <th class="d-none d-lg-table-cell pe-3">Spent $</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% macro yn(val) %}
+            {% if val %}<span class="text-success">✓</span>{% else %}<span class="text-danger">✗</span>{% endif %}
+          {% endmacro %}
+          {% for r in rows %}
+          <tr>
+            <td class="ps-3 small">{{ r.date }}</td>
+            <td>
+              {% if r.core_complete %}
+                <span class="badge bg-success">DONE</span>
+              {% else %}
+                <span class="badge bg-danger">FAIL</span>
+              {% endif %}
+            </td>
+            <td class="d-none d-sm-table-cell">{{ yn(r.diet_followed) }}</td>
+            <td class="d-none d-sm-table-cell">{{ yn(r.workout1_done) }}</td>
+            <td class="d-none d-sm-table-cell">{{ yn(r.workout2_done and r.workout2_outdoor) }}</td>
+            <td class="d-none d-sm-table-cell">{{ yn(r.water_4l) }}</td>
+            <td class="d-none d-sm-table-cell">{{ yn(r.reading_done) }}</td>
+            <td class="d-none d-sm-table-cell">{{ yn(r.progress_photo) }}</td>
+            <td class="d-none d-md-table-cell small">{{ r.steps or '—' }}</td>
+            <td class="d-none d-md-table-cell small">{{ r.pushups or '—' }}</td>
+            <td class="d-none d-md-table-cell small">{{ r.study_hours or '—' }}</td>
+            <td class="d-none d-lg-table-cell">{{ yn(r.paath_done) }}</td>
+            <td class="d-none d-lg-table-cell">{{ yn(r.skincare_done) }}</td>
+            <td class="d-none d-lg-table-cell">{{ yn(r.haircare_done) }}</td>
+            <td class="d-none d-lg-table-cell pe-3 small">
+              {% if r.money_spent and r.spending_total %}${{ r.spending_total | round(2) }}{% else %}—{% endif %}
+            </td>
+          </tr>
+          {% if r.study_notes and r.study_notes != r.study_notes_raw %}
+          <tr class="table-secondary">
+            <td colspan="15" class="ps-3 small text-muted py-1">
+              <strong>Study:</strong> {{ r.study_notes }}
+            </td>
+          </tr>
+          {% endif %}
+          {% if r.spending_notes and r.spending_notes != r.spending_raw and r.money_spent %}
+          <tr class="table-secondary">
+            <td colspan="15" class="ps-3 small text-muted py-1">
+              <strong>Spending:</strong> {{ r.spending_notes | replace('\n', ' | ') }}
+            </td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% else %}
+  <p class="text-muted">No check-ins yet. <a href="/checkin">Start today.</a></p>
+{% endif %}
+
+{% endblock %}

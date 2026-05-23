@@ -1,0 +1,15 @@
+[Unit]
+Description=75 Hard Tracker
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/75hard
+ExecStart=/usr/bin/python3 /opt/75hard/app.py
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

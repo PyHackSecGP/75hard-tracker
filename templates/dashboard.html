@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+
+{# ── Day counter ────────────────────────────────────────────────────────── #}
+<div class="row g-3 mb-3">
+  <div class="col-12 col-md-4">
+    <div class="card h-100 border-0 day-card text-center">
+      <div class="card-body d-flex flex-column align-items-center justify-content-center py-4">
+        {% if streak == 0 %}
+          <div class="day-number text-muted">DAY 0</div>
+          <div class="day-label text-muted">Not started</div>
+          <a href="/checkin" class="btn btn-orange mt-3 px-4">Start Today</a>
+        {% else %}
+          <div class="day-number">DAY {{ streak }}</div>
+          <div class="day-label text-warning">of 75</div>
+          {% if streak_start %}
+            <div class="small text-muted mt-1">Started {{ streak_start }}</div>
+          {% endif %}
+          <div class="progress mt-3 w-100" style="height:8px">
+            <div class="progress-bar bg-warning" style="width:{{ [streak/75*100,100]|min }}%"></div>
+          </div>
+          <div class="small text-muted mt-1">{{ streak }}/75 — {{ 75 - streak }} to go</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ── Today status ───────────────────────────────────────────────────────── #}
+  <div class="col-12 col-md-4">
+    <div class="card h-100 border-0">
+      <div class="card-body">
+        <h6 class="card-title text-muted text-uppercase small mb-3">Today — {{ today }}</h6>
+        {% if today_row %}
+          {% if today_row.core_complete %}
+            <div class="text-success fw-bold fs-5 mb-2">✓ All core rules done</div>
+          {% else %}
+            <div class="text-danger fw-bold fs-5 mb-2">✗ Incomplete — streak at risk</div>
+          {% endif %}
+          <div class="d-flex flex-wrap gap-1 mt-2">
+            <span class="badge {% if today_row.diet_followed %}bg-success{% else %}bg-danger{% endif %}">Diet</span>
+            <span class="badge {% if today_row.workout1_done %}bg-success{% else %}bg-danger{% endif %}">WO1</span>
+            <span class="badge {% if today_row.workout2_done and today_row.workout2_outdoor %}bg-success{% else %}bg-danger{% endif %}">WO2 (outdoor)</span>
+            <span class="badge {% if today_row.water_4l %}bg-success{% else %}bg-danger{% endif %}">4L Water</span>
+            <span class="badge {% if today_row.reading_done %}bg-success{% else %}bg-danger{% endif %}">Reading</span>
+            <span class="badge {% if today_row.progress_photo %}bg-success{% else %}bg-danger{% endif %}">Photo</span>
+          </div>
+          <a href="/checkin" class="btn btn-sm btn-outline-secondary mt-3">Edit today</a>
+        {% else %}
+          <div class="text-warning fs-5 mb-2">Not checked in yet</div>
+          <p class="text-muted small">Don't break the chain. Check in before midnight.</p>
+          <a href="/checkin" class="btn btn-orange mt-1">Check In Now</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ── Weight card ────────────────────────────────────────────────────────── #}
+  <div class="col-12 col-md-4">
+    <div class="card h-100 border-0">
+      <div class="card-body">
+        <h6 class="card-title text-muted text-uppercase small mb-3">Weight Progress</h6>
+        <div class="d-flex justify-content-between align-items-end mb-2">
+          <div>
+            <div class="fs-2 fw-bold">{{ latest_weight }}<span class="fs-6 text-muted"> kg</span></div>
+            <div class="small text-muted">Current</div>
+          </div>
+          <div class="text-end">
+            <div class="fs-5 text-success fw-bold">-{{ weight_lost }} kg</div>
+            <div class="small text-muted">lost so far</div>
+          </div>
+          <div class="text-end">
+            <div class="fs-5 text-warning">{{ weight_to_go }} kg</div>
+            <div class="small text-muted">to goal</div>
+          </div>
+        </div>
+        <div class="progress mb-1" style="height:10px">
+          <div class="progress-bar bg-success" style="width:{{ weight_pct }}%"></div>
+        </div>
+        <div class="d-flex justify-content-between small text-muted">
+          <span>130 kg start</span>
+          <span>{{ weight_pct }}%</span>
+          <span>{{ goal_weight }} kg goal</span>
+        </div>
+        <a href="/weight" class="btn btn-sm btn-outline-secondary mt-3">Log Weight</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Recent history mini-strip ────────────────────────────────────────────── #}
+{% if history %}
+<div class="card border-0 mb-3">
+  <div class="card-body py-2">
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+      <span class="small text-muted me-1">Last 10 days:</span>
+      {% for row in history|reverse %}
+        <span class="day-dot {% if row.core_complete %}dot-green{% else %}dot-red{% endif %}"
+              title="{{ row.date }}"></span>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ── Projects ─────────────────────────────────────────────────────────────── #}
+<h6 class="text-muted text-uppercase small mb-2">Projects — due before Nov 2026</h6>
+<div class="row g-3">
+  {% for p in projects %}
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="card border-0 h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-1">
+          <span class="badge bg-secondary">{{ p.code }}</span>
+          <span class="small text-muted">{{ p.timeline }}</span>
+        </div>
+        <div class="fw-semibold mb-1">{{ p.name }}</div>
+        <span class="badge
+          {% if 'ACTIVE' in p.status %}bg-success
+          {% elif 'IN PROGRESS' in p.status %}bg-primary
+          {% elif 'STALLED' in p.status %}bg-danger
+          {% else %}bg-secondary{% endif %}
+          small">{{ p.status }}</span>
+        {% if p.last_commit %}
+          <div class="small text-muted mt-2">{{ p.last_commit }}</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% endblock %}

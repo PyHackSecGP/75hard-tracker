@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Weight{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-12 col-md-8">
+    <div class="card border-0">
+      <div class="card-body">
+        <h6 class="text-muted text-uppercase small mb-3">Weight Over Time</h6>
+        <canvas id="weightChart" height="120"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-md-4">
+    <div class="card border-0">
+      <div class="card-body">
+        <h6 class="text-muted text-uppercase small mb-3">Log Today's Weight</h6>
+        <form method="POST" action="/weight">
+          <div class="mb-3">
+            <label class="form-label small">Weight (kg)</label>
+            <input type="number" class="form-control" name="weight_kg"
+              step="0.1" min="40" max="300" required placeholder="e.g. 128.5">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small">Notes (optional)</label>
+            <input type="text" class="form-control" name="notes" placeholder="e.g. after gym, morning">
+          </div>
+          <button type="submit" class="btn btn-orange w-100">Log Weight</button>
+        </form>
+
+        <hr class="border-secondary my-3">
+        <div class="row text-center">
+          <div class="col-4">
+            <div class="small text-muted">Start</div>
+            <div class="fw-bold">{{ start_weight }} kg</div>
+          </div>
+          <div class="col-4">
+            <div class="small text-muted">Goal</div>
+            <div class="fw-bold text-success">{{ goal_weight }} kg</div>
+          </div>
+          <div class="col-4">
+            <div class="small text-muted">To lose</div>
+            <div class="fw-bold text-warning">
+              {% if rows %}{{ (rows[0].weight_kg - goal_weight) | round(1) }}{% else %}30{% endif %} kg
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if rows %}
+<div class="card border-0">
+  <div class="card-body p-0">
+    <table class="table table-dark table-hover table-sm mb-0">
+      <thead><tr>
+        <th class="ps-3">Date</th>
+        <th>Weight (kg)</th>
+        <th>Change</th>
+        <th class="d-none d-md-table-cell">Notes</th>
+      </tr></thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td class="ps-3">{{ r.date }}</td>
+          <td class="fw-bold">{{ r.weight_kg }}</td>
+          <td>
+            {% if loop.index < rows|length %}
+              {% set diff = r.weight_kg - rows[loop.index].weight_kg %}
+              {% if diff < 0 %}
+                <span class="text-success">{{ diff | round(1) }}</span>
+              {% elif diff > 0 %}
+                <span class="text-danger">+{{ diff | round(1) }}</span>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td class="d-none d-md-table-cell text-muted small">{{ r.notes }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script>
+const data = {{ chart_data | safe }};
+const labels = data.map(d => d.date);
+const weights = data.map(d => d.weight);
+
+new Chart(document.getElementById('weightChart'), {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [{
+      label: 'Weight (kg)',
+      data: weights,
+      borderColor: '#fd7e14',
+      backgroundColor: 'rgba(253,126,20,0.1)',
+      borderWidth: 2,
+      pointRadius: 3,
+      tension: 0.3,
+      fill: true,
+    }, {
+      label: 'Goal ({{ goal_weight }} kg)',
+      data: Array(labels.length).fill({{ goal_weight }}),
+      borderColor: '#198754',
+      borderDash: [6, 4],
+      borderWidth: 1.5,
+      pointRadius: 0,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { labels: { color: '#adb5bd', boxWidth: 12 } } },
+    scales: {
+      x: { ticks: { color: '#6c757d', maxTicksLimit: 8 }, grid: { color: '#2a2a2a' } },
+      y: { ticks: { color: '#6c757d' }, grid: { color: '#2a2a2a' } }
+    }
+  }
+});
+</script>
+{% endblock %}

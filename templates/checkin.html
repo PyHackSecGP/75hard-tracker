@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% block title %}Check In{% endblock %}
+
+{% block content %}
+<h4 class="mb-1">Daily Check-In</h4>
+<p class="text-muted small mb-4">{{ today }}{% if is_weekend %} — Weekend ({{ study_target }}h study target){% else %} — Weekday ({{ study_target }}h study target){% endif %}</p>
+
+<form method="POST" action="/checkin">
+
+  {# ── SECTION 1: Core 75 Hard ────────────────────────────────────────────── #}
+  <div class="card border-0 mb-3">
+    <div class="card-header bg-transparent border-bottom border-secondary">
+      <span class="fw-bold text-warning">🔥 Core 75 Hard Rules</span>
+      <span class="small text-muted ms-2">Miss any = Day 1 restart</span>
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+
+        <div class="col-12">
+          {% set v = existing.diet_followed if existing else 0 %}
+          <div class="form-check form-check-lg">
+            <input class="form-check-input" type="checkbox" name="diet_followed" id="diet_followed" {% if v %}checked{% endif %}>
+            <label class="form-check-label" for="diet_followed">
+              <strong>Diet followed</strong> — no cheat meals, no alcohol
+            </label>
+          </div>
+        </div>
+
+        <div class="col-12 col-md-6">
+          {% set v = existing.workout1_done if existing else 0 %}
+          <div class="form-check form-check-lg mb-2">
+            <input class="form-check-input" type="checkbox" name="workout1_done" id="workout1_done" {% if v %}checked{% endif %}>
+            <label class="form-check-label" for="workout1_done"><strong>Workout 1</strong> — 45 min any location</label>
+          </div>
+          <input type="text" class="form-control form-control-sm" name="workout1_type"
+            placeholder="Type of workout (e.g. gym, run)" value="{{ existing.workout1_type if existing else '' }}">
+        </div>
+
+        <div class="col-12 col-md-6">
+          {% set v2 = existing.workout2_done if existing else 0 %}
+          {% set vo = existing.workout2_outdoor if existing else 0 %}
+          <div class="form-check form-check-lg mb-2">
+            <input class="form-check-input" type="checkbox" name="workout2_done" id="workout2_done" {% if v2 %}checked{% endif %}>
+            <label class="form-check-label" for="workout2_done"><strong>Workout 2</strong> — 45 min</label>
+          </div>
+          <div class="form-check ms-1">
+            <input class="form-check-input" type="checkbox" name="workout2_outdoor" id="workout2_outdoor" {% if vo %}checked{% endif %}>
+            <label class="form-check-label text-warning" for="workout2_outdoor">Must be outdoors</label>
+          </div>
+        </div>
+
+        <div class="col-12 col-sm-4">
+          {% set v = existing.water_4l if existing else 0 %}
+          <div class="form-check form-check-lg">
+            <input class="form-check-input" type="checkbox" name="water_4l" id="water_4l" {% if v %}checked{% endif %}>
+            <label class="form-check-label" for="water_4l"><strong>4L water</strong></label>
+          </div>
+        </div>
+
+        <div class="col-12 col-sm-4">
+          {% set v = existing.reading_done if existing else 0 %}
+          <div class="form-check form-check-lg mb-1">
+            <input class="form-check-input" type="checkbox" name="reading_done" id="reading_done" {% if v %}checked{% endif %}>
+            <label class="form-check-label" for="reading_done"><strong>Read 10 pages</strong> non-fiction</label>
+          </div>
+          <input type="number" class="form-control form-control-sm" name="reading_pages"
+            placeholder="Pages read" min="0" value="{{ existing.reading_pages if existing else '' }}">
+        </div>
+
+        <div class="col-12 col-sm-4">
+          {% set v = existing.progress_photo if existing else 0 %}
+          <div class="form-check form-check-lg">
+            <input class="form-check-input" type="checkbox" name="progress_photo" id="progress_photo" {% if v %}checked{% endif %}>
+            <label class="form-check-label" for="progress_photo"><strong>Progress photo</strong></label>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  {# ── SECTION 2: Physical metrics ────────────────────────────────────────── #}
+  <div class="card border-0 mb-3">
+    <div class="card-header bg-transparent border-bottom border-secondary">
+      <span class="fw-bold">💪 Physical Metrics</span>
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+
+        <div class="col-6 col-sm-3">
+          <label class="form-label small text-muted">Steps <span class="text-warning">(target 15k)</span></label>
+          <input type="number" class="form-control" name="steps" min="0"
+            value="{{ existing.steps if existing else '' }}" placeholder="0">
+        </div>
+        <div class="col-6 col-sm-3">
+          <label class="form-label small text-muted">Push-ups</label>
+          <input type="number" class="form-control" name="pushups" min="0"
+            value="{{ existing.pushups if existing else '' }}" placeholder="0">
+        </div>
+        <div class="col-6 col-sm-3">
+          <label class="form-label small text-muted">Sit-ups</label>
+          <input type="number" class="form-control" name="situps" min="0"
+            value="{{ existing.situps if existing else '' }}" placeholder="0">
+        </div>
+        <div class="col-6 col-sm-3">
+          <label class="form-label small text-muted">Squats</label>
+          <input type="number" class="form-control" name="squats" min="0"
+            value="{{ existing.squats if existing else '' }}" placeholder="0">
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  {# ── SECTION 3: Wellness ─────────────────────────────────────────────────── #}
+  <div class="card border-0 mb-3">
+    <div class="card-header bg-transparent border-bottom border-secondary">
+      <span class="fw-bold">🧘 Wellness</span>
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+        {% set checks = [
+          ('paath_done',    'Paath done'),
+          ('kegels_done',   'Kegels'),
+          ('skincare_done', 'Skincare'),
+          ('haircare_done', 'Hair care'),
+        ] %}
+        {% for name, label in checks %}
+        <div class="col-6 col-sm-3">
+          {% set v = existing[name] if existing else 0 %}
+          <div class="form-check form-check-lg">
+            <input class="form-check-input" type="checkbox" name="{{ name }}" id="{{ name }}" {% if v %}checked{% endif %}>
+            <label class="form-check-label" for="{{ name }}">{{ label }}</label>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  {# ── SECTION 4: Study ────────────────────────────────────────────────────── #}
+  <div class="card border-0 mb-3">
+    <div class="card-header bg-transparent border-bottom border-secondary">
+      <span class="fw-bold">📚 Study</span>
+      <span class="small text-muted ms-2">Target: {{ study_target }}h today</span>
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-12 col-sm-3">
+          <label class="form-label small text-muted">Hours studied</label>
+          <input type="number" class="form-control" name="study_hours" step="0.25" min="0"
+            value="{{ existing.study_hours if existing else '' }}" placeholder="0">
+        </div>
+        <div class="col-12 col-sm-9">
+          <label class="form-label small text-muted">What did you study? <span class="text-muted">(AI will format this)</span></label>
+          <textarea class="form-control" name="study_notes_raw" id="study_notes_raw" rows="2"
+            placeholder="e.g. watched buffer overflow video, practiced HackTheBox, read chapter 4 of web app hacker's handbook">{{ existing.study_notes_raw if existing else '' }}</textarea>
+          {% if existing and existing.study_notes and existing.study_notes != existing.study_notes_raw %}
+            <div class="small text-muted mt-1 p-2 bg-dark rounded">
+              <strong>AI formatted:</strong> {{ existing.study_notes }}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── SECTION 5: Spending ─────────────────────────────────────────────────── #}
+  <div class="card border-0 mb-4">
+    <div class="card-header bg-transparent border-bottom border-secondary">
+      <span class="fw-bold">💸 Spending</span>
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-12">
+          {% set ms = existing.money_spent if existing else 0 %}
+          <div class="form-check form-check-lg">
+            <input class="form-check-input" type="checkbox" name="money_spent" id="money_spent"
+              {% if ms %}checked{% endif %} onchange="toggleSpending(this)">
+            <label class="form-check-label" for="money_spent">Spent money today</label>
+          </div>
+        </div>
+
+        <div id="spending-details" class="col-12 {% if not (existing and existing.money_spent) %}d-none{% endif %}">
+          <div class="row g-3">
+            <div class="col-12 col-sm-8">
+              <label class="form-label small text-muted">Describe what you spent (AI will format it)</label>
+              <textarea class="form-control" name="spending_raw" id="spending_raw" rows="2"
+                placeholder="e.g. spent 20 bucks at tim hortons and filled gas for 60 dollars and grabbed groceries at superstore 80 bucks">{{ existing.spending_raw if existing else '' }}</textarea>
+              {% if existing and existing.spending_notes and existing.spending_notes != existing.spending_raw %}
+                <div class="small text-muted mt-1 p-2 bg-dark rounded">
+                  <strong>AI formatted:</strong><br>{{ existing.spending_notes | replace('\n', '<br>') | safe }}
+                </div>
+              {% endif %}
+            </div>
+            <div class="col-12 col-sm-4">
+              <label class="form-label small text-muted">Total spent (CAD $)</label>
+              <input type="number" class="form-control" name="spending_total" step="0.01" min="0"
+                value="{{ existing.spending_total if existing else '' }}" placeholder="0.00">
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="d-grid gap-2 d-md-flex justify-content-md-end mb-5">
+    <a href="/" class="btn btn-outline-secondary">Cancel</a>
+    <button type="submit" class="btn btn-orange px-5">Save Check-In</button>
+  </div>
+
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleSpending(cb) {
+  document.getElementById('spending-details').classList.toggle('d-none', !cb.checked);
+}
+</script>
+{% endblock %}

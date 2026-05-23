@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Projects{% endblock %}
+
+{% block content %}
+<h4 class="mb-1">Project Tracker</h4>
+<p class="text-muted small mb-4">All 4 due before November 2026. No scope creep. MVP first.</p>
+
+<div class="row g-3">
+  {% for p in projects %}
+  <div class="col-12 col-md-6">
+    <div class="card border-0 h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <span class="badge bg-secondary me-2">{{ p.code }}</span>
+            <strong>{{ p.name }}</strong>
+          </div>
+          <span class="small text-muted">{{ p.timeline }}</span>
+        </div>
+
+        <form method="POST" action="/projects">
+          <input type="hidden" name="code" value="{{ p.code }}">
+          <div class="mb-2">
+            <label class="form-label small text-muted">Status</label>
+            <select class="form-select form-select-sm" name="status">
+              {% for s in ['NOT STARTED', 'IN PROGRESS', 'ACTIVE', 'STALLED', 'COMPLETE'] %}
+                <option {% if p.status == s %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-5">
+              <label class="form-label small text-muted">Commits this week</label>
+              <input type="number" class="form-control form-control-sm" name="commits_week"
+                min="0" value="{{ p.commits_week or 0 }}">
+            </div>
+            <div class="col-7">
+              <label class="form-label small text-muted">Last commit note</label>
+              <input type="text" class="form-control form-control-sm" name="last_commit"
+                placeholder="e.g. 2h ago — added parser" value="{{ p.last_commit or '' }}">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-sm btn-outline-secondary">Update</button>
+        </form>
+
+        <div class="mt-2">
+          <span class="badge
+            {% if 'ACTIVE' in p.status %}bg-success
+            {% elif 'IN PROGRESS' in p.status %}bg-primary
+            {% elif 'STALLED' in p.status %}bg-danger
+            {% elif 'COMPLETE' in p.status %}bg-info
+            {% else %}bg-secondary{% endif %}">{{ p.status }}</span>
+          <span class="small text-muted ms-2">Updated {{ p.updated_at[:10] }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% endblock %}
