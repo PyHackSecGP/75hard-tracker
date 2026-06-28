@@ -11,11 +11,14 @@ from flask import Flask, jsonify, redirect, render_template, request, url_for
 
 app = Flask(__name__)
 
-DB_PATH = Path("/opt/75hard/tracker.db")
+DB_PATH = Path(__file__).parent / "tracker.db"
 OLLAMA_URL = "http://100.126.22.55:11434"
 OLLAMA_MODEL = "llama3.1:70b"
-START_WEIGHT = 130.0
+START_WEIGHT = 135.0
 GOAL_WEIGHT = 100.0
+MARRIAGE_DATE = date(2026, 10, 16)   # 110 days from 2026-06-28
+WEIGHT_START_DATE = date(2026, 6, 28)
+CALORIE_TARGET = 1500
 
 
 # ── database ──────────────────────────────────────────────────────────────────
@@ -92,12 +95,36 @@ def init_db() -> None:
             updated_at   TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS nutrition_log (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            date       TEXT NOT NULL,
+            meal       TEXT DEFAULT '',
+            description TEXT DEFAULT '',
+            calories   INTEGER DEFAULT 0,
+            protein_g  REAL DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
         INSERT OR IGNORE INTO projects (code, name, timeline) VALUES
             ('P1', 'SAST+DAST Triage Tool',       'Weeks 1-3'),
             ('P2', 'Threat Model Generator',       'Weeks 3-5'),
             ('P3', 'AI Log Anomaly Detector',      'Weeks 5-7'),
             ('P4', 'AI Pentest Report Assistant',  'Weeks 7-8');
     """)
+    conn.commit()
+
+    # Migrate checkins: add new columns to existing installs
+    for col_def in [
+        "calories_today INTEGER DEFAULT 0",
+        "morning_cardio_type TEXT DEFAULT ''",
+        "morning_cardio_minutes INTEGER DEFAULT 0",
+        "evening_weights_done INTEGER DEFAULT 0",
+        "evening_weights_notes TEXT DEFAULT ''",
+    ]:
+        try:
+            conn.execute(f"ALTER TABLE checkins ADD COLUMN {col_def}")
+        except sqlite3.OperationalError:
+            pass
     conn.commit()
     conn.close()
 
@@ -121,7 +148,6 @@ def get_streak() -> tuple[int, date | None]:
 
     for row in rows:
         d = date.fromisoformat(row["date"])
-        # Allow yesterday to count if today not yet checked in
         if d == today - timedelta(days=1) and streak == 0:
             streak += 1
             expected = d - timedelta(days=1)
@@ -145,6 +171,31 @@ def is_core_complete(data: dict) -> bool:
         data.get("reading_done"),
         data.get("progress_photo"),
     ])
+
+
+def marriage_stats(latest_weight: float) -> dict:
+    today = date.today()
+    days_left = max(0, (MARRIAGE_DATE - today).days)
+    total_days = (MARRIAGE_DATE - WEIGHT_START_DATE).days
+    elapsed = (today - WEIGHT_START_DATE).days
+    kg_to_lose = round(latest_weight - GOAL_WEIGHT, 1)
+    daily_rate = round(kg_to_lose / days_left, 3) if days_left > 0 else 0
+    pct_elapsed = round(elapsed / total_days * 100, 1) if total_days > 0 else 0
+    # Ideal weight today on the linear trajectory
+    today_target = round(
+        START_WEIGHT - (START_WEIGHT - GOAL_WEIGHT) * elapsed / total_days, 1
+    ) if total_days > 0 else GOAL_WEIGHT
+    on_track = latest_weight <= today_target
+    return {
+        "days_left": days_left,
+        "kg_to_lose": kg_to_lose,
+        "daily_rate_needed": daily_rate,
+        "today_target": today_target,
+        "on_track": on_track,
+        "pct_elapsed": pct_elapsed,
+        "marriage_date": MARRIAGE_DATE.isoformat(),
+        "calorie_deficit_needed": round(daily_rate * 7700),
+    }
 
 
 # ── LLM helper ────────────────────────────────────────────────────────────────
@@ -190,12 +241,21 @@ def dashboard():
 
     projects = conn.execute("SELECT * FROM projects ORDER BY code").fetchall()
 
-    # Last 10 days for mini-calendar
     history = conn.execute(
         "SELECT date, core_complete FROM checkins ORDER BY date DESC LIMIT 10"
     ).fetchall()
 
+    # Calories today from checkin or nutrition_log (whichever is higher)
+    cals_row = conn.execute(
+        "SELECT COALESCE(SUM(calories), 0) as total FROM nutrition_log WHERE date=?", (today,)
+    ).fetchone()
+    calories_today = cals_row["total"] if cals_row else 0
+    if today_row and today_row["calories_today"]:
+        calories_today = max(calories_today, today_row["calories_today"])
+
     conn.close()
+
+    m = marriage_stats(latest_weight)
 
     return render_template("dashboard.html",
         today=today,
@@ -206,9 +266,21 @@ def dashboard():
         weight_lost=round(START_WEIGHT - latest_weight, 1),
         weight_to_go=round(latest_weight - GOAL_WEIGHT, 1),
         goal_weight=GOAL_WEIGHT,
+        start_weight=START_WEIGHT,
         weight_pct=round(max(0, (START_WEIGHT - latest_weight) / (START_WEIGHT - GOAL_WEIGHT) * 100), 1),
         projects=projects,
         history=history,
+        # marriage
+        days_to_marriage=m["days_left"],
+        kg_to_lose=m["kg_to_lose"],
+        daily_rate_needed=m["daily_rate_needed"],
+        today_target=m["today_target"],
+        on_track=m["on_track"],
+        marriage_date=m["marriage_date"],
+        deficit_needed=m["calorie_deficit_needed"],
+        # nutrition
+        calories_today=calories_today,
+        calorie_target=CALORIE_TARGET,
     )
 
 
@@ -239,30 +311,36 @@ def checkin():
 
         data = {
             "date": today,
-            "diet_followed":    1 if f.get("diet_followed")   else 0,
-            "workout1_done":    1 if f.get("workout1_done")    else 0,
-            "workout1_type":    f.get("workout1_type", ""),
-            "workout2_done":    1 if f.get("workout2_done")    else 0,
-            "workout2_outdoor": 1 if f.get("workout2_outdoor") else 0,
-            "water_4l":         1 if f.get("water_4l")         else 0,
-            "reading_done":     1 if f.get("reading_done")     else 0,
-            "reading_pages":    int(f.get("reading_pages") or 0),
-            "progress_photo":   1 if f.get("progress_photo")   else 0,
-            "steps":            int(f.get("steps") or 0),
-            "pushups":          int(f.get("pushups") or 0),
-            "situps":           int(f.get("situps") or 0),
-            "squats":           int(f.get("squats") or 0),
-            "paath_done":       1 if f.get("paath_done")       else 0,
-            "kegels_done":      1 if f.get("kegels_done")      else 0,
-            "skincare_done":    1 if f.get("skincare_done")    else 0,
-            "haircare_done":    1 if f.get("haircare_done")    else 0,
-            "study_hours":      float(f.get("study_hours") or 0),
-            "study_notes_raw":  study_raw,
-            "study_notes":      study_notes,
-            "money_spent":      1 if f.get("money_spent")      else 0,
-            "spending_raw":     spending_raw,
-            "spending_notes":   spending_notes,
-            "spending_total":   float(f.get("spending_total") or 0),
+            "diet_followed":          1 if f.get("diet_followed")        else 0,
+            "workout1_done":          1 if f.get("workout1_done")         else 0,
+            "workout1_type":          f.get("workout1_type", ""),
+            "workout2_done":          1 if f.get("workout2_done")         else 0,
+            "workout2_outdoor":       1 if f.get("workout2_outdoor")      else 0,
+            "water_4l":               1 if f.get("water_4l")              else 0,
+            "reading_done":           1 if f.get("reading_done")          else 0,
+            "reading_pages":          int(f.get("reading_pages") or 0),
+            "progress_photo":         1 if f.get("progress_photo")        else 0,
+            "steps":                  int(f.get("steps") or 0),
+            "pushups":                int(f.get("pushups") or 0),
+            "situps":                 int(f.get("situps") or 0),
+            "squats":                 int(f.get("squats") or 0),
+            "paath_done":             1 if f.get("paath_done")            else 0,
+            "kegels_done":            1 if f.get("kegels_done")           else 0,
+            "skincare_done":          1 if f.get("skincare_done")         else 0,
+            "haircare_done":          1 if f.get("haircare_done")         else 0,
+            "study_hours":            float(f.get("study_hours") or 0),
+            "study_notes_raw":        study_raw,
+            "study_notes":            study_notes,
+            "money_spent":            1 if f.get("money_spent")           else 0,
+            "spending_raw":           spending_raw,
+            "spending_notes":         spending_notes,
+            "spending_total":         float(f.get("spending_total") or 0),
+            # nutrition / fitness
+            "calories_today":         int(f.get("calories_today") or 0),
+            "morning_cardio_type":    f.get("morning_cardio_type", ""),
+            "morning_cardio_minutes": int(f.get("morning_cardio_minutes") or 0),
+            "evening_weights_done":   1 if f.get("evening_weights_done")  else 0,
+            "evening_weights_notes":  f.get("evening_weights_notes", ""),
         }
         data["core_complete"] = 1 if is_core_complete(data) else 0
 
@@ -274,14 +352,18 @@ def checkin():
                 reading_pages, progress_photo, steps, pushups, situps,
                 squats, paath_done, kegels_done, skincare_done, haircare_done,
                 study_hours, study_notes_raw, study_notes, money_spent,
-                spending_raw, spending_notes, spending_total, core_complete
+                spending_raw, spending_notes, spending_total, core_complete,
+                calories_today, morning_cardio_type, morning_cardio_minutes,
+                evening_weights_done, evening_weights_notes
             ) VALUES (
                 :date, :diet_followed, :workout1_done, :workout1_type,
                 :workout2_done, :workout2_outdoor, :water_4l, :reading_done,
                 :reading_pages, :progress_photo, :steps, :pushups, :situps,
                 :squats, :paath_done, :kegels_done, :skincare_done, :haircare_done,
                 :study_hours, :study_notes_raw, :study_notes, :money_spent,
-                :spending_raw, :spending_notes, :spending_total, :core_complete
+                :spending_raw, :spending_notes, :spending_total, :core_complete,
+                :calories_today, :morning_cardio_type, :morning_cardio_minutes,
+                :evening_weights_done, :evening_weights_notes
             ) ON CONFLICT(date) DO UPDATE SET
                 diet_followed=excluded.diet_followed,
                 workout1_done=excluded.workout1_done,
@@ -308,6 +390,11 @@ def checkin():
                 spending_notes=excluded.spending_notes,
                 spending_total=excluded.spending_total,
                 core_complete=excluded.core_complete,
+                calories_today=excluded.calories_today,
+                morning_cardio_type=excluded.morning_cardio_type,
+                morning_cardio_minutes=excluded.morning_cardio_minutes,
+                evening_weights_done=excluded.evening_weights_done,
+                evening_weights_notes=excluded.evening_weights_notes,
                 updated_at=CURRENT_TIMESTAMP
         """, data)
         conn.commit()
@@ -325,6 +412,7 @@ def checkin():
         existing=existing,
         study_target=study_target,
         is_weekend=is_weekend,
+        calorie_target=CALORIE_TARGET,
     )
 
 
@@ -353,12 +441,84 @@ def weight():
         for r in reversed(rows)
     ])
 
+    # Target trajectory: linear 135 → 100 over 110 days
+    total_days = (MARRIAGE_DATE - WEIGHT_START_DATE).days
+    target_line = json.dumps([
+        {
+            "date": (WEIGHT_START_DATE + timedelta(days=i)).isoformat(),
+            "target": round(START_WEIGHT - (START_WEIGHT - GOAL_WEIGHT) * i / total_days, 1),
+        }
+        for i in range(0, total_days + 1, 3)  # every 3 days to keep payload small
+    ])
+
+    latest = rows[0]["weight_kg"] if rows else START_WEIGHT
+    m = marriage_stats(latest)
+
     return render_template("weight.html",
         rows=rows,
         chart_data=chart_data,
+        target_line=target_line,
         goal_weight=GOAL_WEIGHT,
         start_weight=START_WEIGHT,
+        marriage_date=MARRIAGE_DATE.isoformat(),
+        today_target=m["today_target"],
+        on_track=m["on_track"],
+        days_left=m["days_left"],
     )
+
+
+@app.route("/nutrition", methods=["GET", "POST"])
+def nutrition():
+    conn = get_db()
+    today = date.today().isoformat()
+
+    if request.method == "POST":
+        conn.execute(
+            """INSERT INTO nutrition_log (date, meal, description, calories, protein_g)
+               VALUES (?, ?, ?, ?, ?)""",
+            (
+                today,
+                request.form.get("meal", ""),
+                request.form.get("description", ""),
+                int(request.form.get("calories") or 0),
+                float(request.form.get("protein_g") or 0),
+            ),
+        )
+        conn.commit()
+        conn.close()
+        return redirect(url_for("nutrition"))
+
+    today_meals = conn.execute(
+        "SELECT * FROM nutrition_log WHERE date=? ORDER BY created_at", (today,)
+    ).fetchall()
+    today_calories = sum(r["calories"] for r in today_meals)
+    today_protein = round(sum(r["protein_g"] for r in today_meals), 1)
+
+    recent = conn.execute(
+        "SELECT date, SUM(calories) as total_cal, SUM(protein_g) as total_prot "
+        "FROM nutrition_log GROUP BY date ORDER BY date DESC LIMIT 14"
+    ).fetchall()
+
+    conn.close()
+
+    return render_template("nutrition.html",
+        today=today,
+        today_meals=today_meals,
+        today_calories=today_calories,
+        today_protein=today_protein,
+        calorie_target=CALORIE_TARGET,
+        protein_target=175,  # ~1.3g per kg of goal body weight
+        recent=recent,
+    )
+
+
+@app.route("/nutrition/delete/<int:meal_id>", methods=["POST"])
+def nutrition_delete(meal_id: int):
+    conn = get_db()
+    conn.execute("DELETE FROM nutrition_log WHERE id=?", (meal_id,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for("nutrition"))
 
 
 @app.route("/history")
@@ -429,10 +589,14 @@ def api_state():
     ).fetchall()]
     conn.close()
 
+    latest = w["weight_kg"] if w else START_WEIGHT
+    m = marriage_stats(latest)
+
     return jsonify({
         "75hard_day": streak,
         "75hard_start": start.isoformat() if start else None,
-        "weight_kg": w["weight_kg"] if w else START_WEIGHT,
+        "weight_kg": latest,
+        "marriage": m,
         "projects": projects,
         "updated_at": datetime.now().isoformat(),
     })

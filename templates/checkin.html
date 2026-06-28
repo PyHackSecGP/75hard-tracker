@@ -165,7 +165,59 @@
     </div>
   </div>
 
-  {# ── SECTION 5: Spending ─────────────────────────────────────────────────── #}
+  {# ── SECTION 5: Nutrition & Fitness ─────────────────────────────────────── #}
+  <div class="card border-0 mb-3">
+    <div class="card-header bg-transparent border-bottom border-secondary">
+      <span class="fw-bold">🥗 Nutrition & Fitness</span>
+      <span class="small text-muted ms-2">Target: {{ calorie_target }} kcal | 60 min cardio + weights</span>
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+
+        <div class="col-12 col-sm-4">
+          <label class="form-label small text-muted">Total calories today <span class="text-warning">(target {{ calorie_target }})</span></label>
+          <input type="number" class="form-control" name="calories_today" min="0" max="6000"
+            value="{{ existing.calories_today if existing else '' }}" placeholder="{{ calorie_target }}">
+        </div>
+
+        <div class="col-12 col-sm-4">
+          <label class="form-label small text-muted">Morning cardio type</label>
+          <input type="text" class="form-control" name="morning_cardio_type"
+            value="{{ existing.morning_cardio_type if existing else '' }}"
+            placeholder="e.g. run, elliptical, walk, bike">
+        </div>
+
+        <div class="col-12 col-sm-4">
+          <label class="form-label small text-muted">Cardio duration <span class="text-warning">(min, target 60)</span></label>
+          <input type="number" class="form-control" name="morning_cardio_minutes" min="0" max="300"
+            value="{{ existing.morning_cardio_minutes if existing else '' }}" placeholder="60">
+        </div>
+
+        <div class="col-12 col-sm-4">
+          {% set ewdone = existing.evening_weights_done if existing else 0 %}
+          <div class="form-check form-check-lg">
+            <input class="form-check-input" type="checkbox" name="evening_weights_done" id="evening_weights_done"
+              {% if ewdone %}checked{% endif %}>
+            <label class="form-check-label" for="evening_weights_done"><strong>Evening weights session</strong></label>
+          </div>
+        </div>
+
+        <div class="col-12 col-sm-8">
+          <label class="form-label small text-muted">Weights notes</label>
+          <input type="text" class="form-control" name="evening_weights_notes"
+            value="{{ existing.evening_weights_notes if existing else '' }}"
+            placeholder="e.g. chest + triceps, bench 3×8 @ 60 kg, incline DB 3×10">
+        </div>
+
+        <div class="col-12">
+          <a href="/nutrition" class="btn btn-sm btn-outline-info">Log individual meals →</a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  {# ── SECTION 6: Spending ─────────────────────────────────────────────────── #}
   <div class="card border-0 mb-4">
     <div class="card-header bg-transparent border-bottom border-secondary">
       <span class="fw-bold">💸 Spending</span>

@@ -42,8 +42,21 @@
           <div class="col-4">
             <div class="small text-muted">To lose</div>
             <div class="fw-bold text-warning">
-              {% if rows %}{{ (rows[0].weight_kg - goal_weight) | round(1) }}{% else %}30{% endif %} kg
+              {% if rows %}{{ (rows[0].weight_kg - goal_weight) | round(1) }}{% else %}35{% endif %} kg
             </div>
+          </div>
+        </div>
+        <hr class="border-secondary my-2">
+        <div class="row text-center">
+          <div class="col-6">
+            <div class="small text-muted">Today's target</div>
+            <div class="fw-bold {% if on_track %}text-success{% else %}text-danger{% endif %}">
+              {{ today_target }} kg
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="small text-muted">Days left</div>
+            <div class="fw-bold text-info">{{ days_left }}</div>
           </div>
         </div>
       </div>
@@ -94,38 +107,79 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <script>
-const data = {{ chart_data | safe }};
-const labels = data.map(d => d.date);
-const weights = data.map(d => d.weight);
+const actual = {{ chart_data | safe }};
+const target = {{ target_line | safe }};
+const marriageDate = '{{ marriage_date }}';
+
+// Merge all dates (actual + target) into one sorted axis
+const allDates = [...new Set([
+  ...actual.map(d => d.date),
+  ...target.map(d => d.date),
+  marriageDate,
+])].sort();
+
+// Map actual weights and target weights onto the shared axis
+const actualMap = Object.fromEntries(actual.map(d => [d.date, d.weight]));
+const targetMap = Object.fromEntries(target.map(d => [d.date, d.target]));
+
+const actualWeights = allDates.map(d => actualMap[d] ?? null);
+const targetWeights = allDates.map(d => targetMap[d] ?? null);
 
 new Chart(document.getElementById('weightChart'), {
   type: 'line',
   data: {
-    labels,
-    datasets: [{
-      label: 'Weight (kg)',
-      data: weights,
-      borderColor: '#fd7e14',
-      backgroundColor: 'rgba(253,126,20,0.1)',
-      borderWidth: 2,
-      pointRadius: 3,
-      tension: 0.3,
-      fill: true,
-    }, {
-      label: 'Goal ({{ goal_weight }} kg)',
-      data: Array(labels.length).fill({{ goal_weight }}),
-      borderColor: '#198754',
-      borderDash: [6, 4],
-      borderWidth: 1.5,
-      pointRadius: 0,
-    }]
+    labels: allDates,
+    datasets: [
+      {
+        label: 'Actual weight (kg)',
+        data: actualWeights,
+        borderColor: '#fd7e14',
+        backgroundColor: 'rgba(253,126,20,0.08)',
+        borderWidth: 2,
+        pointRadius: 4,
+        tension: 0.3,
+        fill: true,
+        spanGaps: false,
+      },
+      {
+        label: 'Target trajectory',
+        data: targetWeights,
+        borderColor: '#20c997',
+        borderDash: [5, 4],
+        borderWidth: 1.5,
+        pointRadius: 0,
+        spanGaps: true,
+      },
+      {
+        label: 'Goal ({{ goal_weight }} kg)',
+        data: Array(allDates.length).fill({{ goal_weight }}),
+        borderColor: '#198754',
+        borderDash: [2, 6],
+        borderWidth: 1,
+        pointRadius: 0,
+      }
+    ]
   },
   options: {
     responsive: true,
-    plugins: { legend: { labels: { color: '#adb5bd', boxWidth: 12 } } },
+    plugins: {
+      legend: { labels: { color: '#adb5bd', boxWidth: 12 } },
+      tooltip: {
+        callbacks: {
+          label: ctx => ctx.raw !== null ? `${ctx.dataset.label}: ${ctx.raw} kg` : null,
+        }
+      }
+    },
     scales: {
-      x: { ticks: { color: '#6c757d', maxTicksLimit: 8 }, grid: { color: '#2a2a2a' } },
-      y: { ticks: { color: '#6c757d' }, grid: { color: '#2a2a2a' } }
+      x: {
+        ticks: { color: '#6c757d', maxTicksLimit: 10 },
+        grid: { color: '#2a2a2a' }
+      },
+      y: {
+        ticks: { color: '#6c757d' },
+        grid: { color: '#2a2a2a' },
+        min: {{ goal_weight - 2 }},
+      }
     }
   }
 });
