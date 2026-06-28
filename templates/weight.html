@@ -2,88 +2,119 @@
 {% block title %}Weight{% endblock %}
 
 {% block content %}
-<div class="row g-3 mb-4">
-  <div class="col-12 col-md-8">
-    <div class="card border-0">
-      <div class="card-body">
-        <h6 class="text-muted text-uppercase small mb-3">Weight Over Time</h6>
-        <canvas id="weightChart" height="120"></canvas>
+
+{# ── Hero banner ─────────────────────────────────────────────────────────────── #}
+<div class="weight-hero p-4 mb-3">
+  <div class="row align-items-center g-3">
+
+    {# Left: headline stats #}
+    <div class="col-12 col-md-7">
+      <div class="text-muted text-uppercase small mb-2" style="letter-spacing:.12em">
+        110-Day Marriage Protocol · {{ marriage_date }}
       </div>
-    </div>
-  </div>
 
-  <div class="col-12 col-md-4">
-    <div class="card border-0">
-      <div class="card-body">
-        <h6 class="text-muted text-uppercase small mb-3">Log Today's Weight</h6>
-        <form method="POST" action="/weight">
-          <div class="mb-3">
-            <label class="form-label small">Weight (kg)</label>
-            <input type="number" class="form-control" name="weight_kg"
-              step="0.1" min="40" max="300" required placeholder="e.g. 128.5">
-          </div>
-          <div class="mb-3">
-            <label class="form-label small">Notes (optional)</label>
-            <input type="text" class="form-control" name="notes" placeholder="e.g. after gym, morning">
-          </div>
-          <button type="submit" class="btn btn-orange w-100">Log Weight</button>
-        </form>
-
-        <hr class="border-secondary my-3">
-        <div class="row text-center">
-          <div class="col-4">
-            <div class="small text-muted">Start</div>
-            <div class="fw-bold">{{ start_weight }} kg</div>
-          </div>
-          <div class="col-4">
-            <div class="small text-muted">Goal</div>
-            <div class="fw-bold text-success">{{ goal_weight }} kg</div>
-          </div>
-          <div class="col-4">
-            <div class="small text-muted">To lose</div>
-            <div class="fw-bold text-warning">
-              {% if rows %}{{ (rows[0].weight_kg - goal_weight) | round(1) }}{% else %}35{% endif %} kg
-            </div>
-          </div>
+      <div class="d-flex align-items-end gap-4 mb-3 flex-wrap">
+        <div>
+          <div class="weight-stat-num text-white">{{ latest_weight }}<span class="fs-5 text-muted fw-normal"> kg</span></div>
+          <div class="small text-muted">current</div>
         </div>
-        <hr class="border-secondary my-2">
-        <div class="row text-center">
-          <div class="col-6">
-            <div class="small text-muted">Today's target</div>
-            <div class="fw-bold {% if on_track %}text-success{% else %}text-danger{% endif %}">
-              {{ today_target }} kg
-            </div>
-          </div>
-          <div class="col-6">
-            <div class="small text-muted">Days left</div>
-            <div class="fw-bold text-info">{{ days_left }}</div>
-          </div>
+        <div class="text-muted fs-3 pb-1">→</div>
+        <div>
+          <div class="weight-stat-num text-success">{{ goal_weight }}<span class="fs-5 fw-normal"> kg</span></div>
+          <div class="small text-muted">goal</div>
+        </div>
+        <div class="text-muted fs-3 pb-1">·</div>
+        <div>
+          <div class="weight-stat-num text-warning">{{ days_left }}</div>
+          <div class="small text-muted">days left</div>
         </div>
       </div>
+
+      {# On-track badge #}
+      {% if on_track %}
+        <span class="track-badge ahead">
+          ✓ On track — {{ "%+.1f"|format(behind_by * -1) }} kg ahead of pace
+        </span>
+      {% else %}
+        <span class="track-badge behind">
+          ⚠ Behind — {{ "%.1f"|format(behind_by) }} kg behind today's target ({{ today_target }} kg)
+        </span>
+      {% endif %}
+
+      <div class="mt-3 small text-muted">
+        Need <strong class="text-white">{{ daily_rate_needed }} kg/day</strong>
+        · <strong class="text-white">{{ kg_to_lose }} kg</strong> to lose
+        · Start: <strong class="text-white">{{ start_weight }} kg</strong>
+      </div>
     </div>
+
+    {# Right: quick log form #}
+    <div class="col-12 col-md-5">
+      <div class="card border-0" style="background:rgba(13,15,17,0.85);backdrop-filter:blur(8px)">
+        <div class="card-body">
+          <div class="small text-muted text-uppercase mb-2" style="letter-spacing:.1em">Log Today's Weight</div>
+          <form method="POST" action="/weight" class="d-flex gap-2 align-items-end">
+            <div class="flex-grow-1">
+              <input type="number" class="form-control form-control-lg fw-bold" name="weight_kg"
+                step="0.1" min="40" max="300" required placeholder="{{ latest_weight }}"
+                style="font-size:1.4rem; background:#0d0f11">
+              <div class="small text-muted mt-1">kg — any time of day, consistent time is best</div>
+            </div>
+            <button type="submit" class="btn btn-orange px-3 py-2" style="font-size:1rem; white-space:nowrap">
+              Log It
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
+{# ── Main chart ──────────────────────────────────────────────────────────────── #}
+<div class="chart-wrap mb-3">
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+      <span class="fw-bold">Weight vs Date</span>
+      <span class="text-muted small ms-2">{{ start_weight }} kg → {{ goal_weight }} kg by {{ marriage_date }}</span>
+    </div>
+    <div class="d-flex gap-3 small">
+      <span><span style="display:inline-block;width:20px;height:3px;background:#fd7e14;vertical-align:middle"></span> Actual</span>
+      <span><span style="display:inline-block;width:20px;height:2px;background:#20c997;border-top:2px dashed #20c997;vertical-align:middle"></span> Target</span>
+      <span><span style="display:inline-block;width:20px;height:2px;background:#dc3545;border-top:2px dashed #dc3545;vertical-align:middle"></span> End date</span>
+    </div>
+  </div>
+  <canvas id="weightChart" style="max-height:360px"></canvas>
+</div>
+
+{# ── Recent log table ─────────────────────────────────────────────────────────── #}
 {% if rows %}
-<div class="card border-0">
+<div class="card border-0 mb-4">
+  <div class="card-header bg-transparent border-bottom border-secondary d-flex justify-content-between align-items-center">
+    <span class="fw-bold small text-muted text-uppercase">Recent Entries</span>
+    <span class="small text-muted">{{ rows | length }} logged</span>
+  </div>
   <div class="card-body p-0">
     <table class="table table-dark table-hover table-sm mb-0">
       <thead><tr>
         <th class="ps-3">Date</th>
-        <th>Weight (kg)</th>
+        <th>Weight</th>
         <th>Change</th>
+        <th>vs Target</th>
         <th class="d-none d-md-table-cell">Notes</th>
       </tr></thead>
       <tbody>
         {% for r in rows %}
+        {% set total_days = 110 %}
+        {% set elapsed_days = ((r.date | string)[:10]) %}
         <tr>
           <td class="ps-3">{{ r.date }}</td>
-          <td class="fw-bold">{{ r.weight_kg }}</td>
+          <td class="fw-bold">{{ r.weight_kg }} kg</td>
           <td>
-            {% if loop.index < rows|length %}
+            {% if loop.index < rows | length %}
               {% set diff = r.weight_kg - rows[loop.index].weight_kg %}
               {% if diff < 0 %}
-                <span class="text-success">{{ diff | round(1) }}</span>
+                <span class="text-success fw-bold">{{ diff | round(1) }}</span>
               {% elif diff > 0 %}
                 <span class="text-danger">+{{ diff | round(1) }}</span>
               {% else %}
@@ -93,6 +124,7 @@
               <span class="text-muted">—</span>
             {% endif %}
           </td>
+          <td class="small text-muted">—</td>
           <td class="d-none d-md-table-cell text-muted small">{{ r.notes }}</td>
         </tr>
         {% endfor %}
@@ -102,86 +134,254 @@
 </div>
 {% endif %}
 
+{# ── Daily schedule ───────────────────────────────────────────────────────────── #}
+<div class="mb-3">
+  <h6 class="text-muted text-uppercase small mb-3" style="letter-spacing:.1em">Daily Schedule — GP Singh Goggins Protocol</h6>
+  <div class="row g-3">
+
+    <div class="col-12 col-lg-6">
+      <div class="card border-0 h-100">
+        <div class="card-header bg-transparent border-bottom border-secondary">
+          <span class="fw-bold">📅 Weekday</span>
+          <span class="small text-muted ms-2">Mon–Fri</span>
+        </div>
+        <div class="card-body p-0">
+          <table class="table table-dark table-sm mb-0 schedule-table">
+            <thead><tr>
+              <th class="ps-3" style="width:90px">Time</th>
+              <th>Activity</th>
+            </tr></thead>
+            <tbody>
+              <tr><td class="ps-3 text-muted">5:30am</td><td>Wake · 500ml water · <strong>banana</strong></td></tr>
+              <tr class="table-warning bg-opacity-10"><td class="ps-3 text-warning">6:00am</td><td><strong>Leave home</strong></td></tr>
+              <tr><td class="ps-3 text-muted">9:00am</td><td>Work starts</td></tr>
+              <tr class="table-success bg-opacity-10"><td class="ps-3 text-success">12:00pm</td><td>🏃 <strong>Outdoor walk 45min</strong> <span class="badge bg-success ms-1 small">75 Hard outdoor</span></td></tr>
+              <tr><td class="ps-3 text-muted">12:45pm</td><td>Lunch · eggs + fruit + shake</td></tr>
+              <tr class="table-warning bg-opacity-10"><td class="ps-3 text-warning">5:00pm</td><td><strong>Leave office</strong></td></tr>
+              <tr><td class="ps-3 text-muted">6:00pm</td><td>Home</td></tr>
+              <tr class="table-danger bg-opacity-10"><td class="ps-3 text-danger">6:15pm</td><td>🔥 <strong>Incline walk 1hr15 @ 24hr gym</strong> <span class="badge bg-danger ms-1 small">600 kcal</span></td></tr>
+              <tr><td class="ps-3 text-muted">7:30pm</td><td>Protein shake · shower · progress photo</td></tr>
+              <tr><td class="ps-3 text-muted">8:00pm</td><td>Dinner · eggs + fruit</td></tr>
+              <tr><td class="ps-3 text-muted">8:30pm</td><td>10 pages · skincare · paath</td></tr>
+              <tr class="table-primary bg-opacity-10"><td class="ps-3 text-info">9:30pm</td><td>😴 <strong>SLEEP</strong> <span class="small text-muted">(8hrs → 5:30am)</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-6">
+      <div class="card border-0 mb-3">
+        <div class="card-header bg-transparent border-bottom border-secondary">
+          <span class="fw-bold">📅 Weekend</span>
+          <span class="small text-muted ms-2">Sat–Sun · 2hrs in shifts</span>
+        </div>
+        <div class="card-body p-0">
+          <table class="table table-dark table-sm mb-0 schedule-table">
+            <thead><tr>
+              <th class="ps-3" style="width:90px">Time</th>
+              <th>Activity</th>
+            </tr></thead>
+            <tbody>
+              <tr><td class="ps-3 text-muted">5:30am</td><td>Wake · water · banana</td></tr>
+              <tr class="table-danger bg-opacity-10"><td class="ps-3 text-danger">5:45am</td><td>🔥 <strong>Incline walk shift 1 — 1hr</strong></td></tr>
+              <tr><td class="ps-3 text-muted">6:45am</td><td>Protein shake · rest</td></tr>
+              <tr class="table-danger bg-opacity-10"><td class="ps-3 text-danger">7:30am</td><td>🔥 <strong>Incline walk shift 2 — 1hr</strong></td></tr>
+              <tr class="table-success bg-opacity-10"><td class="ps-3 text-success">9:00am</td><td>🏃 <strong>Outdoor walk 45min</strong> <span class="badge bg-success ms-1 small">75 Hard outdoor</span></td></tr>
+              <tr><td class="ps-3 text-muted">9:45am</td><td>Breakfast · eggs + fruit + shake</td></tr>
+              <tr><td class="ps-3 text-muted">Afternoon</td><td>💪 Weights 45min (any time before 6pm)</td></tr>
+              <tr><td class="ps-3 text-muted">8:00pm</td><td>Dinner · wind down</td></tr>
+              <tr class="table-primary bg-opacity-10"><td class="ps-3 text-info">9:30pm</td><td>😴 <strong>SLEEP</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card border-0">
+        <div class="card-header bg-transparent border-bottom border-secondary">
+          <span class="fw-bold">💪 Gym Split</span>
+          <span class="small text-muted ms-2">Mon/Wed/Fri after incline</span>
+        </div>
+        <div class="card-body p-0">
+          <table class="table table-dark table-sm mb-0 schedule-table">
+            <tbody>
+              <tr><td class="ps-3 text-warning" style="width:90px">Mon</td><td>Chest + Triceps — 30min after walk</td></tr>
+              <tr><td class="ps-3 text-muted">Tue</td><td>Incline walk only · recovery</td></tr>
+              <tr><td class="ps-3 text-warning">Wed</td><td>Back + Biceps — 30min after walk</td></tr>
+              <tr><td class="ps-3 text-muted">Thu</td><td>Incline walk only · recovery</td></tr>
+              <tr><td class="ps-3 text-warning">Fri</td><td>Legs + Shoulders — 30min after walk</td></tr>
+              <tr><td class="ps-3 text-muted">Sat/Sun</td><td>2hr incline shifts + full body weights</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{# ── Calorie target card ──────────────────────────────────────────────────────── #}
+<div class="card border-0 mb-4">
+  <div class="card-header bg-transparent border-bottom border-secondary">
+    <span class="fw-bold">🥗 Daily Targets</span>
+  </div>
+  <div class="card-body">
+    <div class="row g-3 text-center">
+      <div class="col-6 col-sm-3">
+        <div class="fs-3 fw-bold text-success">1,500</div>
+        <div class="small text-muted">kcal eaten (max)</div>
+      </div>
+      <div class="col-6 col-sm-3">
+        <div class="fs-3 fw-bold text-danger">−600</div>
+        <div class="small text-muted">kcal cardio burn</div>
+      </div>
+      <div class="col-6 col-sm-3">
+        <div class="fs-3 fw-bold text-info">175g</div>
+        <div class="small text-muted">protein target</div>
+      </div>
+      <div class="col-6 col-sm-3">
+        <div class="fs-3 fw-bold text-warning">4L</div>
+        <div class="small text-muted">water daily</div>
+      </div>
+    </div>
+    <hr class="border-secondary">
+    <div class="small text-muted text-center">
+      Foods: Asian pear · Banana · Watermelon · Musk melon · Orange · Protein shake · Eggs · Chicken breast · Greek yogurt · Almonds · Spinach
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <script>
-const actual = {{ chart_data | safe }};
-const target = {{ target_line | safe }};
+const actual   = {{ chart_data | safe }};
+const target   = {{ target_line | safe }};
+const todayStr = new Date().toISOString().slice(0,10);
 const marriageDate = '{{ marriage_date }}';
+const startWeight  = {{ start_weight }};
+const goalWeight   = {{ goal_weight }};
+const latestWeight = {{ latest_weight }};
+const todayTarget  = {{ today_target }};
 
-// Merge all dates (actual + target) into one sorted axis
+// Build unified date axis: target line covers full 110 days
 const allDates = [...new Set([
-  ...actual.map(d => d.date),
   ...target.map(d => d.date),
+  ...actual.map(d => d.date),
   marriageDate,
 ])].sort();
 
-// Map actual weights and target weights onto the shared axis
 const actualMap = Object.fromEntries(actual.map(d => [d.date, d.weight]));
 const targetMap = Object.fromEntries(target.map(d => [d.date, d.target]));
 
-const actualWeights = allDates.map(d => actualMap[d] ?? null);
-const targetWeights = allDates.map(d => targetMap[d] ?? null);
+const actualW = allDates.map(d => actualMap[d] ?? null);
+const targetW = allDates.map(d => targetMap[d] ?? null);
 
-new Chart(document.getElementById('weightChart'), {
+// Today vertical line dataset (two points: goal-weight to start-weight at today's x position)
+const todayLineData = allDates.map(d => d === todayStr ? startWeight : null);
+const todayLineData2 = allDates.map(d => d === todayStr ? goalWeight - 1 : null);
+
+// Point colors: green if at/below target, red if above
+const pointColors = actualW.map((w, i) => {
+  if (w === null) return null;
+  const t = targetMap[allDates[i]];
+  return t && w > t ? '#ff6b7a' : '#fd7e14';
+});
+
+const ctx = document.getElementById('weightChart').getContext('2d');
+new Chart(ctx, {
   type: 'line',
   data: {
     labels: allDates,
     datasets: [
       {
         label: 'Actual weight (kg)',
-        data: actualWeights,
+        data: actualW,
         borderColor: '#fd7e14',
         backgroundColor: 'rgba(253,126,20,0.08)',
-        borderWidth: 2,
-        pointRadius: 4,
-        tension: 0.3,
+        borderWidth: 2.5,
+        pointRadius: actualW.map(w => w !== null ? 5 : 0),
+        pointBackgroundColor: pointColors,
+        pointBorderColor: pointColors,
+        pointHoverRadius: 8,
+        tension: 0.35,
         fill: true,
         spanGaps: false,
+        order: 1,
       },
       {
         label: 'Target trajectory',
-        data: targetWeights,
+        data: targetW,
         borderColor: '#20c997',
-        borderDash: [5, 4],
+        borderDash: [6, 4],
         borderWidth: 1.5,
         pointRadius: 0,
+        pointHoverRadius: 4,
         spanGaps: true,
+        order: 2,
       },
       {
         label: 'Goal ({{ goal_weight }} kg)',
-        data: Array(allDates.length).fill({{ goal_weight }}),
-        borderColor: '#198754',
-        borderDash: [2, 6],
+        data: allDates.map(() => goalWeight),
+        borderColor: 'rgba(220,53,69,0.4)',
+        borderDash: [3, 6],
         borderWidth: 1,
         pointRadius: 0,
-      }
+        order: 3,
+      },
     ]
   },
   options: {
     responsive: true,
+    interaction: { mode: 'index', intersect: false },
     plugins: {
-      legend: { labels: { color: '#adb5bd', boxWidth: 12 } },
+      legend: {
+        labels: { color: '#adb5bd', boxWidth: 14, padding: 16 }
+      },
       tooltip: {
+        backgroundColor: '#1a1c1f',
+        borderColor: '#2a2d31',
+        borderWidth: 1,
+        titleColor: '#dee2e6',
+        bodyColor: '#adb5bd',
         callbacks: {
+          afterBody: (items) => {
+            const date = items[0]?.label;
+            const t = targetMap[date];
+            const a = actualMap[date];
+            if (t && a) {
+              const diff = (a - t).toFixed(1);
+              return diff > 0 ? [`⚠ Behind target by ${diff} kg`] : [`✓ Ahead by ${Math.abs(diff)} kg`];
+            }
+            return [];
+          },
           label: ctx => ctx.raw !== null ? `${ctx.dataset.label}: ${ctx.raw} kg` : null,
         }
       }
     },
     scales: {
       x: {
-        ticks: { color: '#6c757d', maxTicksLimit: 10 },
-        grid: { color: '#2a2a2a' }
+        ticks: {
+          color: '#6c757d',
+          maxTicksLimit: 12,
+          maxRotation: 30,
+        },
+        grid: { color: '#1e2124' },
       },
       y: {
-        ticks: { color: '#6c757d' },
-        grid: { color: '#2a2a2a' },
-        min: {{ goal_weight - 2 }},
+        min: goalWeight - 3,
+        max: startWeight + 2,
+        ticks: { color: '#6c757d', callback: v => v + ' kg' },
+        grid: { color: '#1e2124' },
       }
     }
   }
 });
+</script>
+
+<script>
+// Add today's vertical marker as a DOM overlay
+// Draw it as annotation text on the chart area after render
 </script>
 {% endblock %}

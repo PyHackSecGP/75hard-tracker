@@ -453,6 +453,7 @@ def weight():
 
     latest = rows[0]["weight_kg"] if rows else START_WEIGHT
     m = marriage_stats(latest)
+    behind_by = round(latest - m["today_target"], 1)  # positive = behind, negative = ahead
 
     return render_template("weight.html",
         rows=rows,
@@ -464,6 +465,10 @@ def weight():
         today_target=m["today_target"],
         on_track=m["on_track"],
         days_left=m["days_left"],
+        latest_weight=latest,
+        behind_by=behind_by,
+        kg_to_lose=m["kg_to_lose"],
+        daily_rate_needed=m["daily_rate_needed"],
     )
 
 

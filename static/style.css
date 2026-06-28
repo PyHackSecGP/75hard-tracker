@@ -1,5 +1,5 @@
 :root {
-  --orange: #fd7e14;
+  --accent: #3fb950;
   --bg: #111214;
   --card-bg: #1a1c1f;
   --border: #2a2d31;
@@ -16,7 +16,7 @@ body {
   border-bottom: 1px solid var(--border);
   padding: 0.6rem 0;
 }
-.navbar-brand { font-size: 1.1rem; letter-spacing: 0.05em; color: var(--orange) !important; }
+.navbar-brand { font-size: 1.1rem; letter-spacing: 0.05em; color: var(--accent) !important; }
 .nav-link { color: #6c757d !important; font-size: 0.875rem; }
 .nav-link:hover, .nav-link.active { color: #dee2e6 !important; }
 
@@ -30,20 +30,20 @@ body {
   padding: 0.75rem 1rem;
 }
 
-.btn-orange {
-  background: var(--orange);
+.btn-primary {
+  background: var(--accent);
   color: #000;
   font-weight: 600;
   border: none;
 }
-.btn-orange:hover { background: #e8700d; color: #000; }
+.btn-primary:hover { background: #2ea043; color: #000; }
 
 /* Big day counter */
 .day-card { background: linear-gradient(135deg, #1a1c1f 0%, #111214 100%); }
 .day-number {
   font-size: 3.5rem;
   font-weight: 900;
-  color: var(--orange);
+  color: var(--accent);
   line-height: 1;
   letter-spacing: -2px;
 }
@@ -67,18 +67,68 @@ body {
 }
 .form-control:focus, .form-select:focus {
   background: #0d0f11;
-  border-color: var(--orange);
+  border-color: var(--accent);
   color: #dee2e6;
-  box-shadow: 0 0 0 0.2rem rgba(253,126,20,.15);
+  box-shadow: 0 0 0 0.2rem rgba(63,185,80,0.15);
 }
-.form-check-input:checked { background-color: var(--orange); border-color: var(--orange); }
+.form-check-input:checked { background-color: var(--accent); border-color: var(--accent); }
 .form-check-lg .form-check-input { width: 1.35em; height: 1.35em; margin-top: 0.1em; }
 .form-check-lg .form-check-label { padding-left: 0.35em; }
 
 .table-dark { background: var(--card-bg); }
 .table-dark td, .table-dark th { border-color: var(--border); }
 
+.btn-orange {
+  background: #fd7e14;
+  color: #000;
+  font-weight: 700;
+  border: none;
+}
+.btn-orange:hover { background: #e96c00; color: #000; }
+
 textarea { resize: vertical; }
+
+/* Weight hero — motivation bg */
+.weight-hero {
+  position: relative;
+  background:
+    linear-gradient(to right, rgba(13,15,17,0.97) 0%, rgba(13,15,17,0.92) 55%, rgba(13,15,17,0.55) 100%),
+    url('/static/motivation.jpg') right 20% center / cover no-repeat;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.weight-stat-num {
+  font-size: 2.6rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -1px;
+}
+
+.track-badge {
+  display: inline-block;
+  padding: 0.35rem 1rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.03em;
+}
+.track-badge.ahead { background: rgba(25,135,84,0.25); color: #2ecc71; border: 1px solid #198754; }
+.track-badge.behind { background: rgba(220,53,69,0.2); color: #ff6b7a; border: 1px solid #dc3545; }
+
+.chart-wrap {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem 1rem 1rem;
+}
+
+.schedule-table td, .schedule-table th {
+  border-color: var(--border) !important;
+  vertical-align: middle;
+}
+.schedule-table tr:hover td { background: rgba(255,255,255,0.03); }
 
 @media (max-width: 576px) {
   .day-number { font-size: 2.8rem; }
