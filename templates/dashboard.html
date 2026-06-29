@@ -207,31 +207,96 @@
 </div>
 {% endif %}
 
-{# ── Projects ─────────────────────────────────────────────────────────────── #}
-<h6 class="text-muted text-uppercase small mb-2">Projects — due before Nov 2026</h6>
-<div class="row g-3">
-  {% for p in projects %}
-  <div class="col-12 col-sm-6 col-xl-3">
-    <div class="card border-0 h-100">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start mb-1">
-          <span class="badge bg-secondary">{{ p.code }}</span>
-          <span class="small text-muted">{{ p.timeline }}</span>
-        </div>
-        <div class="fw-semibold mb-1">{{ p.name }}</div>
-        <span class="badge
-          {% if 'ACTIVE' in p.status %}bg-success
-          {% elif 'IN PROGRESS' in p.status %}bg-primary
-          {% elif 'STALLED' in p.status %}bg-danger
-          {% else %}bg-secondary{% endif %}
-          small">{{ p.status }}</span>
-        {% if p.last_commit %}
-          <div class="small text-muted mt-2">{{ p.last_commit }}</div>
-        {% endif %}
-      </div>
+{# ── Weight chart ─────────────────────────────────────────────────────────── #}
+<div class="chart-wrap mb-3">
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+      <span class="fw-bold">Weight Progress</span>
+      <span class="text-muted small ms-2">{{ start_weight }} kg → {{ goal_weight }} kg · {{ marriage_date }}</span>
+    </div>
+    <div class="d-flex gap-3 small align-items-center">
+      {% if on_track %}
+        <span class="track-badge ahead">✓ On track</span>
+      {% else %}
+        <span class="track-badge behind">⚠ Behind</span>
+      {% endif %}
+      <a href="/weight" class="btn btn-sm btn-outline-secondary">Full view →</a>
     </div>
   </div>
-  {% endfor %}
+  <canvas id="dashWeightChart" style="max-height:220px"></canvas>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script>
+const actual   = {{ weight_chart | tojson }};
+const tgt      = {{ target_line | tojson }};
+const marriage = '{{ marriage_date }}';
+const startW   = {{ start_weight }};
+const goalW    = {{ goal_weight }};
+
+const allDates = [...new Set([
+  ...tgt.map(d => d.date),
+  ...actual.map(d => d.date),
+  marriage,
+])].sort();
+
+const aMap = Object.fromEntries(actual.map(d => [d.date, d.weight_kg]));
+const tMap = Object.fromEntries(tgt.map(d => [d.date, d.target]));
+
+new Chart(document.getElementById('dashWeightChart'), {
+  type: 'line',
+  data: {
+    labels: allDates,
+    datasets: [
+      {
+        label: 'Weight (kg)',
+        data: allDates.map(d => aMap[d] ?? null),
+        borderColor: '#fd7e14',
+        backgroundColor: 'rgba(253,126,20,0.07)',
+        borderWidth: 2,
+        pointRadius: allDates.map(d => aMap[d] ? 4 : 0),
+        pointBackgroundColor: allDates.map(d => {
+          const a = aMap[d], t = tMap[d];
+          return (a && t && a > t) ? '#ff6b7a' : '#fd7e14';
+        }),
+        fill: true, tension: 0.35, spanGaps: false, order: 1,
+      },
+      {
+        label: 'Target',
+        data: allDates.map(d => tMap[d] ?? null),
+        borderColor: '#20c997', borderDash: [5, 4], borderWidth: 1.5,
+        pointRadius: 0, spanGaps: true, order: 2,
+      },
+      {
+        label: '100 kg goal',
+        data: allDates.map(() => goalW),
+        borderColor: 'rgba(220,53,69,0.35)', borderDash: [2, 5],
+        borderWidth: 1, pointRadius: 0, order: 3,
+      },
+    ]
+  },
+  options: {
+    responsive: true,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { labels: { color: '#6c757d', boxWidth: 12, padding: 14 } },
+      tooltip: {
+        backgroundColor: '#1a1c1f', borderColor: '#2a2d31', borderWidth: 1,
+        titleColor: '#dee2e6', bodyColor: '#adb5bd',
+      }
+    },
+    scales: {
+      x: { ticks: { color: '#6c757d', maxTicksLimit: 8 }, grid: { color: '#1e2124' } },
+      y: {
+        min: goalW - 2, max: startW + 1,
+        ticks: { color: '#6c757d', callback: v => v + ' kg' },
+        grid: { color: '#1e2124' }
+      }
+    }
+  }
+});
+</script>
 {% endblock %}

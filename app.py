@@ -253,7 +253,22 @@ def dashboard():
     if today_row and today_row["calories_today"]:
         calories_today = max(calories_today, today_row["calories_today"])
 
+    # Weight chart data
+    weight_rows = conn.execute(
+        "SELECT date, weight_kg FROM weight_log ORDER BY date ASC LIMIT 90"
+    ).fetchall()
+
     conn.close()
+
+    # Target trajectory for dashboard chart
+    total_days = (MARRIAGE_DATE - WEIGHT_START_DATE).days
+    target_line = [
+        {
+            "date": (WEIGHT_START_DATE + timedelta(days=i)).isoformat(),
+            "target": round(START_WEIGHT - (START_WEIGHT - GOAL_WEIGHT) * i / total_days, 1),
+        }
+        for i in range(0, total_days + 1, 3)
+    ]
 
     m = marriage_stats(latest_weight)
 
@@ -268,7 +283,6 @@ def dashboard():
         goal_weight=GOAL_WEIGHT,
         start_weight=START_WEIGHT,
         weight_pct=round(max(0, (START_WEIGHT - latest_weight) / (START_WEIGHT - GOAL_WEIGHT) * 100), 1),
-        projects=projects,
         history=history,
         # marriage
         days_to_marriage=m["days_left"],
@@ -281,6 +295,9 @@ def dashboard():
         # nutrition
         calories_today=calories_today,
         calorie_target=CALORIE_TARGET,
+        # chart
+        weight_chart=weight_rows,
+        target_line=target_line,
     )
 
 
