@@ -254,9 +254,12 @@ def dashboard():
         calories_today = max(calories_today, today_row["calories_today"])
 
     # Weight chart data
-    weight_rows = conn.execute(
-        "SELECT date, weight_kg FROM weight_log ORDER BY date ASC LIMIT 90"
-    ).fetchall()
+    weight_rows = [
+        {"date": r[0], "weight_kg": r[1]}
+        for r in conn.execute(
+            "SELECT date, weight_kg FROM weight_log ORDER BY date ASC LIMIT 90"
+        ).fetchall()
+    ]
 
     conn.close()
 
