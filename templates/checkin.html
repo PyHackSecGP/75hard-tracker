@@ -67,13 +67,6 @@
             placeholder="Pages read" min="0" value="{{ existing.reading_pages if existing else '' }}">
         </div>
 
-        <div class="col-12 col-sm-4">
-          {% set v = existing.progress_photo if existing else 0 %}
-          <div class="form-check form-check-lg">
-            <input class="form-check-input" type="checkbox" name="progress_photo" id="progress_photo" {% if v %}checked{% endif %}>
-            <label class="form-check-label" for="progress_photo"><strong>Progress photo</strong></label>
-          </div>
-        </div>
 
       </div>
     </div>
