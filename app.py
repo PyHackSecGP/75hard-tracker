@@ -212,7 +212,7 @@ def llm_format(system_prompt: str, raw: str) -> str:
                 "prompt": f"{system_prompt}\n\nInput: {raw}\n\nOutput:",
                 "stream": False,
             },
-            timeout=45,
+            timeout=5,
         )
         if resp.ok:
             return resp.json().get("response", raw).strip()
