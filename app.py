@@ -235,7 +235,7 @@ def dashboard():
     streak, streak_start = get_streak()
 
     weights = conn.execute(
-        "SELECT date, weight_kg FROM weight_log ORDER BY date DESC LIMIT 1"
+        "SELECT date, weight_kg FROM weight_log ORDER BY date DESC, id DESC LIMIT 1"
     ).fetchone()
     latest_weight = weights["weight_kg"] if weights else START_WEIGHT
 
@@ -452,7 +452,7 @@ def weight():
         return redirect(url_for("weight"))
 
     rows = conn.execute(
-        "SELECT date, weight_kg, notes FROM weight_log ORDER BY date DESC LIMIT 90"
+        "SELECT date, weight_kg, notes FROM weight_log ORDER BY date DESC, id DESC LIMIT 90"
     ).fetchall()
     conn.close()
 
@@ -607,7 +607,7 @@ def api_state():
     streak, start = get_streak()
     conn = get_db()
     w = conn.execute(
-        "SELECT weight_kg FROM weight_log ORDER BY date DESC LIMIT 1"
+        "SELECT weight_kg FROM weight_log ORDER BY date DESC, id DESC LIMIT 1"
     ).fetchone()
     projects = [dict(r) for r in conn.execute(
         "SELECT * FROM projects ORDER BY code"
