@@ -169,7 +169,6 @@ def is_core_complete(data: dict) -> bool:
         data.get("workout2_outdoor"),
         data.get("water_4l"),
         data.get("reading_done"),
-        data.get("progress_photo"),
     ])
 
 
