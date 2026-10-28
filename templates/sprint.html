@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Sprint board{% endblock %}
+
+{% block content %}
+
+<section class="mb-4">
+  <h1 class="gps-h1">Sprint + Marathon Board</h1>
+  <p class="text-muted small">
+    Current sprint phase: <span class="gps-pill ok">{{ current_sprint_phase }}</span> ·
+    Current marathon phase: <span class="gps-pill ok">{{ current_marathon_phase }}</span>
+  </p>
+</section>
+
+{% for g in groups %}
+<section class="gps-card mb-4 phase-card phase-{{ g.meta.track }}">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div>
+      <div class="gps-eyebrow">{{ g.meta.track|upper }}</div>
+      <h2 class="gps-h2">{{ g.meta.label }}</h2>
+    </div>
+    <div class="text-end">
+      <div class="gps-metric sm"><span class="gps-accent">{{ g.done }}</span> <span class="text-muted">/ {{ g.total }}</span></div>
+      <div class="small text-muted">{{ g.pct }}% done</div>
+    </div>
+  </div>
+  <div class="progress gps-progress mb-3">
+    <div class="progress-bar
+      {% if g.meta.track == 'sprint' %}bg-info
+      {% elif g.meta.track == 'marathon' %}bg-success
+      {% else %}bg-warning{% endif %}"
+      style="width:{{ g.pct }}%"></div>
+  </div>
+  <ul class="gps-tasks dense">
+    {% for t in g.tasks %}
+      <li>
+        <button class="gps-tick {{ 'done' if t.done else '' }}"
+                hx-post="/sprint/tick/{{ t.task_key }}"
+                hx-swap="outerHTML"
+                aria-label="toggle {{ t.task_key }}"></button>
+        <span class="{% if t.done %}gps-strike{% endif %}">{{ t.description }}</span>
+        {% if t.due_week %}<span class="gps-pill muted">wk {{ t.due_week }}</span>{% endif %}
+        {% if t.done_date %}<span class="gps-pill ok">{{ t.done_date }}</span>{% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endfor %}
+
+{% endblock %}

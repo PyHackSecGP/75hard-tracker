@@ -1,0 +1,11 @@
+{% if summary %}
+  <div class="gps-log-ok">
+    <strong>✓ Logged.</strong> {{ summary }}
+    {% if tasks_done %}<div class="small text-muted">Ticked: {{ tasks_done|join(', ') }}</div>{% endif %}
+  </div>
+{% else %}
+  <div class="gps-log-warn">
+    Logged, but AI could not parse any structured data. Entry saved raw.
+  </div>
+{% endif %}
+<script>setTimeout(() => { document.getElementById('log-input').value = ''; document.getElementById('log-input').focus(); }, 50);</script>

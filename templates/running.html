@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Running{% endblock %}
+
+{% block content %}
+
+<section class="mb-4">
+  <h1 class="gps-h1">Running Log</h1>
+  <p class="text-muted small">Phase: <span class="gps-pill ok">{{ marathon_phase_label }}</span></p>
+</section>
+
+<section class="gps-grid mb-4">
+  <article class="gps-card">
+    <div class="gps-eyebrow">This week</div>
+    <div class="gps-metric">{{ "%.1f"|format(week_km) }} <span class="text-muted fs-6">/ {{ week_target }} km</span></div>
+    <div class="progress gps-progress mt-2">
+      <div class="progress-bar bg-success" style="width:{{ week_pct }}%"></div>
+    </div>
+    <div class="gps-mini-sub">{{ week_pct }}% of weekly target</div>
+  </article>
+
+  <article class="gps-card">
+    <div class="gps-eyebrow">Longest run</div>
+    <div class="gps-metric">{{ "%.1f"|format(longest_km) }} <span class="text-muted fs-6">/ 42.2 km</span></div>
+    <div class="progress gps-progress mt-2">
+      <div class="progress-bar bg-info" style="width:{{ longest_pct }}%"></div>
+    </div>
+    <div class="gps-mini-sub">path to marathon</div>
+  </article>
+
+  <article class="gps-card">
+    <div class="gps-eyebrow">Add run</div>
+    <form method="POST" action="/running" class="gps-run-form">
+      <div class="row g-2">
+        <div class="col-6"><input class="form-control" type="number" step="0.1" min="0" name="distance_km" placeholder="km" required></div>
+        <div class="col-6"><input class="form-control" type="number" min="0" name="duration_min" placeholder="min"></div>
+        <div class="col-6">
+          <select class="form-select" name="type">
+            <option value="easy">easy</option>
+            <option value="tempo">tempo</option>
+            <option value="long">long</option>
+            <option value="race">race</option>
+            <option value="strength">strength</option>
+          </select>
+        </div>
+        <div class="col-6"><input class="form-control" type="number" min="0" max="220" name="avg_hr" placeholder="avg HR"></div>
+        <div class="col-12"><input class="form-control" type="text" name="notes" placeholder="notes (optional)"></div>
+      </div>
+      <button class="btn btn-accent mt-2 w-100" type="submit">Log run</button>
+    </form>
+  </article>
+</section>
+
+<section class="gps-card chart-wrap mb-4">
+  <h3 class="gps-h3">Last 90 days</h3>
+  <canvas id="runChart" style="max-height:260px"></canvas>
+</section>
+
+<section class="gps-card">
+  <h3 class="gps-h3">History</h3>
+  <table class="table table-dark table-sm align-middle mb-0">
+    <thead>
+      <tr><th>Date</th><th>Type</th><th class="text-end">km</th><th class="text-end">min</th><th class="text-end">HR</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+        <tr>
+          <td class="font-mono">{{ r.date }}</td>
+          <td><span class="gps-pill {{ 'ok' if r.type in ['easy','long'] else 'warn' }}">{{ r.type }}</span></td>
+          <td class="text-end">{{ "%.1f"|format(r.distance_km) }}</td>
+          <td class="text-end">{{ r.duration_min or '-' }}</td>
+          <td class="text-end">{{ r.avg_hr or '-' }}</td>
+          <td class="text-muted small">{{ r.notes or '' }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" class="text-muted small">No runs logged yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script>
+const runs = {{ chart|safe }};
+const labels = runs.map(r => r.date);
+const dataKm = runs.map(r => r.km);
+new Chart(document.getElementById('runChart'), {
+  type: 'bar',
+  data: { labels, datasets: [{
+    label: 'km',
+    data: dataKm,
+    backgroundColor: runs.map(r => r.type === 'long' ? '#20c997' : r.type === 'tempo' ? '#fd7e14' : '#4dabf7'),
+  }]},
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { labels: { color: '#6c757d' } },
+      tooltip: { backgroundColor: '#1a1c1f' }
+    },
+    scales: {
+      x: { ticks: { color: '#6c757d', maxTicksLimit: 10 }, grid: { color: '#1e2124' } },
+      y: { ticks: { color: '#6c757d', callback: v => v + ' km' }, grid: { color: '#1e2124' } }
+    }
+  }
+});
+</script>
+{% endblock %}

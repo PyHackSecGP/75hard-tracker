@@ -3,227 +3,195 @@
 
 {% block content %}
 
-{# ── Day counter ────────────────────────────────────────────────────────── #}
-<div class="row g-3 mb-3">
-  <div class="col-12 col-md-4">
-    <div class="card h-100 border-0 day-card text-center">
-      <div class="card-body d-flex flex-column align-items-center justify-content-center py-4">
-        {% if streak == 0 %}
-          <div class="day-number text-muted">DAY 0</div>
-          <div class="day-label text-muted">Not started</div>
-          <a href="/checkin" class="btn btn-orange mt-3 px-4">Start Today</a>
-        {% else %}
-          <div class="day-number">DAY {{ streak }}</div>
-          <div class="day-label text-warning">of 75</div>
-          {% if streak_start %}
-            <div class="small text-muted mt-1">Started {{ streak_start }}</div>
-          {% endif %}
-          <div class="progress mt-3 w-100" style="height:8px">
-            <div class="progress-bar bg-warning" style="width:{{ [streak/75*100,100]|min }}%"></div>
-          </div>
-          <div class="small text-muted mt-1">{{ streak }}/75 — {{ 75 - streak }} to go</div>
-        {% endif %}
+{# ── Hero: free-text log input ────────────────────────────────────────────── #}
+<section class="gps-hero mb-4">
+  <form hx-post="/sprint/log" hx-target="#log-result" hx-swap="innerHTML" hx-indicator=".gps-spinner" class="gps-log-form">
+    <label class="gps-hero-label">What did you do today?</label>
+    <textarea id="log-input" name="text" rows="3" placeholder="e.g. ran 8k Stanley Park Z2, drank 4L water, pushed p1 README polish, applied to Trail of Bits + GitHub Security Lab" autofocus></textarea>
+    <div class="gps-hero-foot">
+      <div class="gps-hero-hint">
+        <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to log · <kbd>n</kbd> to refocus
+        {% if vault_enabled %}· <span class="gps-pill ok">brain sync on</span>{% else %}· <span class="gps-pill warn">brain sync off</span>{% endif %}
       </div>
+      <button class="btn btn-accent" type="submit">Log</button>
     </div>
-  </div>
+    <div class="gps-spinner htmx-indicator">processing…</div>
+  </form>
+  <div id="log-result" class="gps-log-result"></div>
+</section>
 
-  {# ── Today status ───────────────────────────────────────────────────────── #}
-  <div class="col-12 col-md-4">
-    <div class="card h-100 border-0">
-      <div class="card-body">
-        <h6 class="card-title text-muted text-uppercase small mb-3">Today — {{ today }}</h6>
-        {% if today_row %}
-          {% if today_row.core_complete %}
-            <div class="text-success fw-bold fs-5 mb-2">✓ All core rules done</div>
-          {% else %}
-            <div class="text-danger fw-bold fs-5 mb-2">✗ Incomplete — streak at risk</div>
-          {% endif %}
-          <div class="d-flex flex-wrap gap-1 mt-2">
-            <span class="badge {% if today_row.diet_followed %}bg-success{% else %}bg-danger{% endif %}">Diet</span>
-            <span class="badge {% if today_row.workout1_done %}bg-success{% else %}bg-danger{% endif %}">WO1</span>
-            <span class="badge {% if today_row.workout2_done and today_row.workout2_outdoor %}bg-success{% else %}bg-danger{% endif %}">WO2 (outdoor)</span>
-            <span class="badge {% if today_row.water_4l %}bg-success{% else %}bg-danger{% endif %}">4L Water</span>
-            <span class="badge {% if today_row.reading_done %}bg-success{% else %}bg-danger{% endif %}">Reading</span>
-          </div>
-          <a href="/checkin" class="btn btn-sm btn-outline-secondary mt-3">Edit today</a>
-        {% else %}
-          <div class="text-warning fs-5 mb-2">Not checked in yet</div>
-          <p class="text-muted small">Don't break the chain. Check in before midnight.</p>
-          <a href="/checkin" class="btn btn-orange mt-1">Check In Now</a>
-        {% endif %}
-      </div>
+{# ── Streak bar — 14-day visual ────────────────────────────────────────────── #}
+<section class="gps-card streak-card mb-4">
+  <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
+    <div>
+      <div class="gps-eyebrow">75 Hard</div>
+      <div class="gps-metric">Day <span class="gps-accent">{{ streak }}</span> <span class="text-muted fs-6">/ 75</span></div>
+      {% if streak_start %}<div class="small text-muted">Started {{ streak_start }}</div>{% endif %}
     </div>
-  </div>
-
-  {# ── Weight card ────────────────────────────────────────────────────────── #}
-  <div class="col-12 col-md-4">
-    <div class="card h-100 border-0">
-      <div class="card-body">
-        <h6 class="card-title text-muted text-uppercase small mb-3">Weight Progress</h6>
-        <div class="d-flex justify-content-between align-items-end mb-2">
-          <div>
-            <div class="fs-2 fw-bold">{{ latest_weight }}<span class="fs-6 text-muted"> kg</span></div>
-            <div class="small text-muted">Current</div>
-          </div>
-          <div class="text-end">
-            <div class="fs-5 text-success fw-bold">-{{ weight_lost }} kg</div>
-            <div class="small text-muted">lost so far</div>
-          </div>
-          <div class="text-end">
-            <div class="fs-5 text-warning">{{ weight_to_go }} kg</div>
-            <div class="small text-muted">to goal</div>
-          </div>
-        </div>
-        <div class="progress mb-1" style="height:10px">
-          <div class="progress-bar bg-success" style="width:{{ weight_pct }}%"></div>
-        </div>
-        <div class="d-flex justify-content-between small text-muted">
-          <span>{{ start_weight }} kg start</span>
-          <span>{{ weight_pct }}%</span>
-          <span>{{ goal_weight }} kg goal</span>
-        </div>
-        <a href="/weight" class="btn btn-sm btn-outline-secondary mt-3">Log Weight</a>
-      </div>
-    </div>
-  </div>
-</div>
-
-{# ── Marriage / Nutrition row ─────────────────────────────────────────────── #}
-<div class="row g-3 mb-3">
-
-  {# Marriage countdown #}
-  <div class="col-12 col-md-4">
-    <div class="card h-100 border-0" style="border-left: 3px solid #dc3545 !important;">
-      <div class="card-body">
-        <h6 class="card-title text-muted text-uppercase small mb-3">💍 Marriage Countdown</h6>
-        <div class="d-flex justify-content-between align-items-end mb-2">
-          <div>
-            <div class="fs-2 fw-bold {% if days_to_marriage <= 14 %}text-danger{% elif days_to_marriage <= 30 %}text-warning{% else %}text-info{% endif %}">
-              {{ days_to_marriage }}
-            </div>
-            <div class="small text-muted">days left ({{ marriage_date }})</div>
-          </div>
-          <div class="text-end">
-            <div class="fs-5 fw-bold text-warning">{{ kg_to_lose }} kg</div>
-            <div class="small text-muted">still to lose</div>
-          </div>
-        </div>
-        <div class="d-flex justify-content-between small mb-1">
-          <span class="text-muted">Need: <strong class="text-white">{{ daily_rate_needed }} kg/day</strong></span>
-          <span class="text-muted">≈ {{ deficit_needed }} kcal deficit</span>
-        </div>
-        <div class="mt-2 small">
-          Target today:
-          <strong class="{{ 'text-success' if on_track else 'text-danger' }}">
-            {{ today_target }} kg
-          </strong>
-          {% if on_track %}
-            <span class="text-success ms-1">✓ on track</span>
-          {% else %}
-            <span class="text-danger ms-1">⚠ behind pace</span>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-  </div>
-
-  {# Daily calories #}
-  <div class="col-12 col-md-4">
-    <div class="card h-100 border-0">
-      <div class="card-body">
-        <h6 class="card-title text-muted text-uppercase small mb-3">🥗 Calories Today</h6>
-        {% set cal_pct = [calories_today / calorie_target * 100, 100] | min %}
-        <div class="d-flex justify-content-between align-items-end mb-2">
-          <div>
-            <div class="fs-2 fw-bold {% if calories_today > calorie_target %}text-danger{% elif calories_today > calorie_target * 0.9 %}text-warning{% else %}text-success{% endif %}">
-              {{ calories_today }}
-            </div>
-            <div class="small text-muted">kcal eaten</div>
-          </div>
-          <div class="text-end">
-            <div class="fs-5 text-muted">/ {{ calorie_target }}</div>
-            <div class="small text-muted">target</div>
-          </div>
-          <div class="text-end">
-            {% set remaining = calorie_target - calories_today %}
-            <div class="fs-5 {% if remaining < 0 %}text-danger{% else %}text-success{% endif %}">
-              {% if remaining >= 0 %}{{ remaining }}{% else %}+{{ -remaining }}{% endif %}
-            </div>
-            <div class="small text-muted">{% if remaining >= 0 %}left{% else %}over{% endif %}</div>
-          </div>
-        </div>
-        <div class="progress mb-2" style="height:8px">
-          <div class="progress-bar {% if calories_today > calorie_target %}bg-danger{% elif calories_today > calorie_target * 0.9 %}bg-warning{% else %}bg-success{% endif %}"
-               style="width:{{ cal_pct }}%"></div>
-        </div>
-        <a href="/nutrition" class="btn btn-sm btn-outline-secondary">Log Meals</a>
-      </div>
-    </div>
-  </div>
-
-  {# Deficit summary #}
-  <div class="col-12 col-md-4">
-    <div class="card h-100 border-0">
-      <div class="card-body">
-        <h6 class="card-title text-muted text-uppercase small mb-3">🔥 Goggins Protocol</h6>
-        <div class="small mb-2">
-          <div class="d-flex justify-content-between py-1 border-bottom border-secondary">
-            <span class="text-muted">Diet (1,500 kcal)</span>
-            <span>−{{ "{:,}".format(3400 - 1500) }} kcal</span>
-          </div>
-          <div class="d-flex justify-content-between py-1 border-bottom border-secondary">
-            <span class="text-muted">Morning cardio</span>
-            <span>−700 kcal</span>
-          </div>
-          <div class="d-flex justify-content-between py-1 border-bottom border-secondary">
-            <span class="text-muted">Evening weights</span>
-            <span>−300 kcal</span>
-          </div>
-          <div class="d-flex justify-content-between py-1 fw-bold">
-            <span>Daily deficit</span>
-            <span class="text-success">−{{ "{:,}".format(3400 - 1500 + 700 + 300) }} kcal</span>
-          </div>
-        </div>
-        <div class="small text-muted">≈ {{ ((3400 - 1500 + 700 + 300) / 7700) | round(3) }} kg fat/day</div>
-      </div>
-    </div>
-  </div>
-
-</div>
-
-{# ── Recent history mini-strip ────────────────────────────────────────────── #}
-{% if history %}
-<div class="card border-0 mb-3">
-  <div class="card-body py-2">
-    <div class="d-flex gap-2 align-items-center flex-wrap">
-      <span class="small text-muted me-1">Last 10 days:</span>
-      {% for row in history|reverse %}
-        <span class="day-dot {% if row.core_complete %}dot-green{% else %}dot-red{% endif %}"
-              title="{{ row.date }}"></span>
+    <div class="gps-streak-bar">
+      {% for seg in streak_bar %}
+        <span class="gps-streak-seg {% if seg.complete %}on{% else %}off{% endif %}" title="{{ seg.date }}"></span>
       {% endfor %}
     </div>
+    <a href="/checkin" class="btn btn-accent">Check in</a>
   </div>
-</div>
-{% endif %}
+  <div class="progress gps-progress">
+    <div class="progress-bar bg-warning" style="width:{{ [streak/75*100, 100]|min }}%"></div>
+  </div>
+</section>
+
+{# ── 4-card grid: 75 Hard today | Sprint | Marathon | Log history ─────────── #}
+<section class="gps-grid mb-4">
+
+  <article class="gps-card">
+    <div class="gps-eyebrow">Today — {{ today }}</div>
+    {% if today_row %}
+      {% if today_row.core_complete %}
+        <div class="gps-status ok">✓ Core complete</div>
+      {% else %}
+        <div class="gps-status warn">✗ Incomplete</div>
+      {% endif %}
+      <div class="gps-chip-row">
+        <span class="gps-chip {{ 'on' if today_row.diet_followed else 'off' }}">Diet</span>
+        <span class="gps-chip {{ 'on' if today_row.workout1_done else 'off' }}">WO1</span>
+        <span class="gps-chip {{ 'on' if today_row.workout2_done and today_row.workout2_outdoor else 'off' }}">WO2 outdoor</span>
+        <span class="gps-chip {{ 'on' if today_row.water_4l else 'off' }}">Water 4L</span>
+        <span class="gps-chip {{ 'on' if today_row.reading_done else 'off' }}">Reading</span>
+        <span class="gps-chip {{ 'on' if today_row.progress_photo else 'off' }}">Photo</span>
+      </div>
+    {% else %}
+      <div class="gps-status warn">Not checked in yet</div>
+      <p class="text-muted small mb-2">Don't break the chain.</p>
+    {% endif %}
+    <a href="/checkin" class="btn btn-outline-light btn-sm mt-2">Full check-in →</a>
+  </article>
+
+  <article class="gps-card">
+    <div class="gps-eyebrow">Sprint — {{ sprint_phase_label }}</div>
+    <div class="gps-progress-labels">
+      <span>{{ bars.sprint.label }}</span><span>{{ bars.sprint.pct }}%</span>
+    </div>
+    <div class="progress gps-progress">
+      <div class="progress-bar bg-info" style="width:{{ bars.sprint.pct }}%"></div>
+    </div>
+    <ul class="gps-tasks">
+      {% for t in sprint_today %}
+        <li>
+          <button class="gps-tick {{ 'done' if t.done else '' }}"
+                  hx-post="/sprint/tick/{{ t.task_key }}"
+                  hx-swap="outerHTML"
+                  aria-label="toggle {{ t.task_key }}"></button>
+          <span class="{% if t.done %}gps-strike{% endif %}">{{ t.description }}</span>
+        </li>
+      {% else %}
+        <li class="text-muted small">No sprint tasks this phase yet.</li>
+      {% endfor %}
+    </ul>
+    <a href="/sprint" class="btn btn-outline-light btn-sm">Open sprint board →</a>
+  </article>
+
+  <article class="gps-card">
+    <div class="gps-eyebrow">Marathon — {{ marathon_phase_label }}</div>
+    <div class="gps-progress-labels">
+      <span>Phase: {{ bars.marathon.label }}</span><span>{{ bars.marathon.pct }}%</span>
+    </div>
+    <div class="progress gps-progress mb-2">
+      <div class="progress-bar bg-success" style="width:{{ bars.marathon.pct }}%"></div>
+    </div>
+    <div class="gps-progress-labels">
+      <span>This week: {{ bars.week_km.label }}</span><span>{{ bars.week_km.pct }}%</span>
+    </div>
+    <div class="progress gps-progress">
+      <div class="progress-bar bg-success" style="width:{{ bars.week_km.pct }}%"></div>
+    </div>
+    <ul class="gps-tasks">
+      {% for t in marathon_today %}
+        <li>
+          <button class="gps-tick {{ 'done' if t.done else '' }}"
+                  hx-post="/sprint/tick/{{ t.task_key }}"
+                  hx-swap="outerHTML"></button>
+          <span class="{% if t.done %}gps-strike{% endif %}">{{ t.description }}</span>
+        </li>
+      {% else %}
+        <li class="text-muted small">No marathon tasks for this phase.</li>
+      {% endfor %}
+    </ul>
+    <a href="/running" class="btn btn-outline-light btn-sm">Log a run →</a>
+  </article>
+
+  <article class="gps-card">
+    <div class="gps-eyebrow">Recent log</div>
+    {% if log_events %}
+      <ul class="gps-events">
+        {% for ev in log_events %}
+          <li>
+            <div class="gps-event-date">
+              {{ ev.date }}
+              {% if ev.status == 'pending' %}<span class="gps-pill warn">parsing…</span>
+              {% elif ev.status == 'failed' %}<span class="gps-pill warn">parse failed</span>
+              {% else %}<span class="gps-pill ok">parsed</span>{% endif %}
+            </div>
+            <div class="gps-event-text">{{ ev.raw_text }}</div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-muted small">No entries yet — type anything in the hero box above.</p>
+    {% endif %}
+  </article>
+
+</section>
+
+{# ── Progress-bar grid ────────────────────────────────────────────────────── #}
+<section class="gps-progress-grid mb-4">
+  {% for key, cfg in [('weight','Weight'),('water','Water'),('steps','Steps'),('reading','Reading'),('pushups','Pushups'),('study','Study'),('spending','Spending')] %}
+    <article class="gps-mini">
+      <div class="gps-mini-head">
+        <span class="gps-eyebrow sm">{{ cfg }}</span>
+        <span class="gps-mini-pct">{{ bars[key].pct }}%</span>
+      </div>
+      <div class="progress gps-progress">
+        <div class="progress-bar" style="width:{{ bars[key].pct }}%"></div>
+      </div>
+      <div class="gps-mini-label">{{ bars[key].label }}</div>
+      <div class="gps-mini-sub">{{ bars[key].sub }}</div>
+    </article>
+  {% endfor %}
+</section>
+
+{# ── Marriage countdown ───────────────────────────────────────────────────── #}
+<section class="gps-card marriage-card mb-4">
+  <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+    <div>
+      <div class="gps-eyebrow">💍 Marriage countdown</div>
+      <div class="gps-metric">
+        <span class="{% if days_to_marriage <= 14 %}gps-red{% elif days_to_marriage <= 30 %}gps-amber{% else %}gps-accent{% endif %}">{{ days_to_marriage }}</span>
+        <span class="text-muted fs-6">days ({{ marriage_date }})</span>
+      </div>
+    </div>
+    <div class="small">
+      <div><span class="text-muted">Weight to lose:</span> <strong>{{ kg_to_lose }} kg</strong></div>
+      <div><span class="text-muted">Daily rate needed:</span> <strong>{{ daily_rate_needed }} kg/day</strong> (~{{ deficit_needed }} kcal)</div>
+      <div>
+        <span class="text-muted">Target today:</span>
+        <strong class="{{ 'gps-ok' if on_track else 'gps-red' }}">{{ today_target }} kg</strong>
+        {% if on_track %}<span class="gps-ok">✓ on track</span>{% else %}<span class="gps-red">⚠ behind</span>{% endif %}
+      </div>
+    </div>
+  </div>
+</section>
 
 {# ── Weight chart ─────────────────────────────────────────────────────────── #}
-<div class="chart-wrap mb-3">
+<section class="gps-card chart-wrap">
   <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <div>
-      <span class="fw-bold">Weight Progress</span>
+      <span class="fw-bold">Weight progress</span>
       <span class="text-muted small ms-2">{{ start_weight }} kg → {{ goal_weight }} kg · {{ marriage_date }}</span>
     </div>
-    <div class="d-flex gap-3 small align-items-center">
-      {% if on_track %}
-        <span class="track-badge ahead">✓ On track</span>
-      {% else %}
-        <span class="track-badge behind">⚠ Behind</span>
-      {% endif %}
-      <a href="/weight" class="btn btn-sm btn-outline-secondary">Full view →</a>
-    </div>
+    <a href="/weight" class="btn btn-outline-light btn-sm">Full view →</a>
   </div>
   <canvas id="dashWeightChart" style="max-height:220px"></canvas>
-</div>
+</section>
 
 {% endblock %}
 
