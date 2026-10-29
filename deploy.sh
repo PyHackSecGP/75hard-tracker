@@ -22,9 +22,8 @@ BRAIN_RESOLVE_IP="${BRAIN_RESOLVE_IP:-}"
 BRAIN_DB="${BRAIN_DB:-obsidian_brain}"
 BRAIN_USER="${BRAIN_USER:-brain-admin}"
 
-if [ -z "${BRAIN_PASS:-}" ] && [ -f "$HOME/projects/brain/state/couchdb_password.txt" ]; then
-    BRAIN_PASS="$(cat "$HOME/projects/brain/state/couchdb_password.txt")"
-fi
+# BRAIN_PASS must be set in environment before invoking this script.
+# e.g.:  export BRAIN_PASS="$(cat ~/path/to/your/couchdb_password)"
 
 echo "==> Staging files on remote ($STAGE_DIR)..."
 ssh "$REMOTE_HOST" "rm -rf $STAGE_DIR && mkdir -p $STAGE_DIR"
